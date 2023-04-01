@@ -2,11 +2,18 @@
   import type { Engine } from "webgl-engine";
 
   let webglCanvas: HTMLCanvasElement;
-  const engine: Engine = window["gameEngine"];
+  let initialized = false;
 
   $: {
+    const engine: Engine = window["gameEngine"];
+
     if (webglCanvas) {
-      engine.setCanvas(webglCanvas);
+      if (!initialized) {
+        initialized = true;
+        engine.initialize(webglCanvas);
+      } else if (engine.canvas !== webglCanvas) {
+        engine.setCanvas(webglCanvas);
+      }
     }
   }
 </script>
