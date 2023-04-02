@@ -3,12 +3,16 @@ lockfileVersion: 5.4
 specifiers:
   '@sveltejs/vite-plugin-svelte': ^2.0.3
   '@tsconfig/svelte': ^3.0.0
+  satellite.js: ^5.0.0
   svelte: ^3.55.1
   svelte-check: ^2.10.3
   tslib: ^2.5.0
   typescript: ^4.9.3
   vite: ^4.2.0
-  webgl-engine: file://../webgl-engine
+  webgl-engine: ../webgl-engine
+
+dependencies:
+  satellite.js: 5.0.0
 
 devDependencies:
   '@sveltejs/vite-plugin-svelte': 2.0.4_svelte@3.58.0+vite@4.2.1
@@ -18,7 +22,7 @@ devDependencies:
   tslib: 2.5.0
   typescript: 4.9.5
   vite: 4.2.1
-  webgl-engine: file:../webgl-engine
+  webgl-engine: link:../webgl-engine
 
 packages:
 
@@ -718,6 +722,10 @@ packages:
       source-map-js: 1.0.2
     dev: true
 
+  /satellite.js/5.0.0:
+    resolution: {integrity: sha512-ie3yiJ2LJAJIhVUKdYhgp7V0btXKAMImDjRnuaNfJGl8rjwP2HwVIh4HLFcpiXYEiYwXc5fqh5+yZqCe6KIwWw==}
+    dev: false
+
   /sorcery/0.10.0:
     resolution: {integrity: sha512-R5ocFmKZQFfSTstfOtHjJuAwbpGyf9qjQa1egyhvXSbM7emjrtLXtGdZsDJDABC85YBfVvrOiGWKSYXPKdvP1g==}
     hasBin: true
@@ -906,10 +914,4 @@ packages:
 
   /wrappy/1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
-    dev: true
-
-  file:../webgl-engine:
-    resolution: {directory: ../webgl-engine, type: directory}
-    name: webgl-engine
-    version: 1.0.0
     dev: true

@@ -1,9 +1,10 @@
 export type OrbitalParameters = {
-    epoch: number;
+    epoch: number; // t (julian date)
     inclination: number;
     ra: number;
-    argumentOfPerigee: number;
-    e: number;
+    argumentOfPerigee: number; // ω
+    eccentricity: number; // e
     meanMotion: number;
-    meanAnomaly: number;
+    semimajorAxis: number; // a
+    meanAnomaly: number; //
 };

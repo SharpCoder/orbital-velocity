@@ -1,6 +1,5 @@
 import {
-    cuboid,
-    cuboidNormals,
+    cylinder,
     DefaultShader,
     Flatten,
     loadModel,
@@ -9,6 +8,9 @@ import {
     Scene,
     Vec3,
 } from 'webgl-engine';
+import { zero } from '../utils';
+import { sgp4, twoline2satrec } from 'satellite.js';
+import { drawOrbit } from '../objects/orbit';
 
 export const MenuScene = new Scene({
     title: 'menu',
@@ -26,26 +28,48 @@ fetch('models/ball.obj')
     .then((resp) => resp.blob())
     .then(async (blob) => {
         const model = await loadModel(blob, 'obj');
-        const colors = Flatten(Repeat(Vec3(0, 0, 0), model.vertexes.length));
-        const scale = 20;
+        const scale = 5;
+        const colors = Flatten(
+            Repeat(Vec3(0, 0, 0), model.vertexes.length / 3)
+        );
+
+        // Sample TLE
+        var tleLine1 =
+                '1 25544U 98067A   19156.50900463  .00003075  00000-0  59442-4 0  9992',
+            tleLine2 =
+                '2 25544  51.6433  59.2583 0008217  16.4489 347.6017 15.51174618173442';
+
+        // Initialize a satellite record
+        var satrec = twoline2satrec(tleLine1, tleLine2);
+        const orbitScale = 400;
 
         MenuScene.addObject({
-            vertexes: model.vertexes,
-            normals: model.normals,
-            offsets: [0, 0, 0],
-            position: [0, 0, 0],
+            ...model,
+            colors,
+            offsets: zero(),
+            position: zero(),
+            rotation: zero(),
             scale: [scale, scale, scale],
-            rotation: [0, 0, 0],
             properties: {
-                rx: Math.random() * rads(0.5),
-                ry: Math.random() * rads(0.5),
+                t: 1680398531648,
             },
             update: function (t) {
-                this.rotation[0] += t * this.properties.rx;
-                this.rotation[1] += t * this.properties.ry;
+                const { position } = sgp4(
+                    satrec,
+                    (new Date().getTime() - this.properties.t) / 1000
+                ) as any;
+
+                this.position = [
+                    position.x / orbitScale,
+                    position.y / orbitScale,
+                    position.z / orbitScale,
+                ];
             },
-            colors,
         });
+
+        for (const object of drawOrbit(satrec, scale, orbitScale)) {
+            MenuScene.addObject(object);
+        }
 
         MenuScene.status = 'ready';
     });
