@@ -12,8 +12,8 @@ let engine = new Engine();
 window['gameEngine'] = engine;
 
 // Register the scenes
-engine.addScene(SimpleScene);
-// engine.addScene(SimplifiedSandbox);
+// engine.addScene(SimpleScene);
+engine.addScene(SimplifiedSandbox);
 // engine.addScene(SandboxScene);
 // engine.addScene(MenuScene);
 // engine.addScene(MenuScene);

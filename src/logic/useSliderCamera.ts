@@ -10,12 +10,12 @@ function n(num: any) {
 
 export function useSliderCamera(engine: Engine) {
     const { camera } = engine.activeScene;
-    const { xrot, yrot, zrot, xpos, ypos, zpos } = engine.properties;
-
     const mm = 24.5;
+
+    let { xrot, yrot, zrot, xpos, ypos, zpos } = engine.properties;
+
     camera.rotateX(rads(n(xrot)));
     camera.rotateY(rads(n(yrot)));
     camera.rotateZ(rads(n(zrot)));
     camera.position = [n(xpos) * mm, n(ypos) * mm, n(zpos) * mm];
-    engine.debug(`${n(xrot)} rotx`);
 }

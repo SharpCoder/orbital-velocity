@@ -13,6 +13,7 @@ import {
     zeros,
     type Obj3d,
 } from 'webgl-engine';
+import { useSliderCamera } from '../logic/useSliderCamera';
 import { lineTo, normalize } from '../objects/orbit';
 
 const ox = 0;
@@ -82,6 +83,7 @@ export const SimplifiedSandbox = new Scene({
     },
     update: function (time, engine) {
         const { camera, objects } = engine.activeScene;
+        useSliderCamera(engine);
 
         const cube1_xyz = [
             cube1.position[0],
