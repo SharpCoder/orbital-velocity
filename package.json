@@ -20,6 +20,7 @@
         "webgl-engine": "../webgl-engine"
     },
     "dependencies": {
+        "@smui/slider": "7.0.0-beta.3",
         "satellite.js": "^5.0.0"
     }
 }
