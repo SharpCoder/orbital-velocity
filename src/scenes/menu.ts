@@ -12,6 +12,7 @@ import { zero } from '../utils';
 import { sgp4, twoline2satrec } from 'satellite.js';
 import { drawOrbit } from '../objects/orbit';
 import { useMapCamera } from '../logic/useMapCamera';
+import { useSliderCamera } from '../logic/useSliderCamera';
 
 export const MenuScene = new Scene({
     title: 'menu',
@@ -25,13 +26,15 @@ export const MenuScene = new Scene({
         const { camera, objects } = engine.activeScene;
         const { position } = objects[0];
 
-        // useMapCamera(engine, camera, 6);
-        camera.target = Vec3(position[0], position[1], position[2]);
-        camera.position = Vec3(position[0], position[1], position[2]);
-        camera.position[2] -= 200;
-        camera.rotateX(camera.rotation[0] + time / 1000);
-        camera.rotateY(camera.rotation[1] + time / 1000);
-        camera.rotateZ(camera.rotation[2] + time / 1000);
+        useSliderCamera(engine);
+        // camera.setPosition(0, 0, 300);
+        // // useMapCamera(engine, camera, 6);
+        // camera.target = Vec3(position[0], position[1], position[2]);
+        // camera.position = Vec3(position[0], position[1], position[2]);
+        // camera.position[2] -= 200;
+        // camera.rotateX(camera.rotation[0] + time / 1000);
+        // camera.rotateY(camera.rotation[1] + time / 1000);
+        // camera.rotateZ(camera.rotation[2] + time / 1000);
     },
     status: 'initializing',
 });
@@ -74,7 +77,7 @@ fetch('models/ball.obj')
                 this.position = [
                     position.x / orbitScale,
                     position.y / orbitScale,
-                    0, //position.z / orbitScale,
+                    position.z / orbitScale,
                 ];
             },
             allowClipping: true,

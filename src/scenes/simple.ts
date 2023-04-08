@@ -12,7 +12,6 @@ import {
     type Obj3d,
 } from 'webgl-engine';
 import { useSliderCamera } from '../logic/useSliderCamera';
-import { lineTo } from '../objects/orbit';
 
 const ox = 0;
 const oy = 0;

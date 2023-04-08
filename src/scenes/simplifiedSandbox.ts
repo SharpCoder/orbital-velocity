@@ -14,10 +14,9 @@ import {
     type Obj3d,
 } from 'webgl-engine';
 import { useSliderCamera } from '../logic/useSliderCamera';
-import { lineTo, normalize } from '../objects/orbit';
 
-const ox = 0;
-const oy = 0;
+const ox = 50;
+const oy = 50;
 const oz = 0;
 let thetaX = 0;
 let thetaY = 0;
@@ -162,7 +161,6 @@ SimplifiedSandbox.addObject(cube2);
 SimplifiedSandbox.addObject(line);
 
 function update(x1, y1, z1, x2, y2, z2) {
-    console.log({ x1, y1, z1, x2, y2, z2 });
     const from = [x1, y1, z1];
     const to = [x2, y2, z2];
     const min = [Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2)];
@@ -324,7 +322,7 @@ const positions = [
 let idx = 1;
 clearInterval(timerId);
 var timerId = setInterval(() => {
-    const args = positions[idx % positions.length];
+    const args = positions[idx % positions.length].map((arg) => arg - 50);
     idx++;
     update.apply(this, args);
 }, 500);
