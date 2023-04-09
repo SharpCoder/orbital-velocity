@@ -4,6 +4,7 @@ import { lineTo } from '../drawing';
 
 export function drawOrbit(
     rec: SatRec,
+    originTime: number,
     sizeScale: number,
     orbitScalar: number
 ): Obj3d[] {
@@ -14,9 +15,8 @@ export function drawOrbit(
         y = 0,
         z = 0;
 
-    const now = (new Date().getTime() - 1680398531648) / 1000;
     for (let i = 0; i < 100; i++) {
-        const { position } = sgp4(rec, now + i) as any;
+        const { position } = sgp4(rec, originTime + i) as any;
         if (i !== 0) {
             inputs.push({
                 from: Vec3(x, y, z),

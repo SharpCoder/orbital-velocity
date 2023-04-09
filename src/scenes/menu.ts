@@ -3,6 +3,7 @@ import {
     DefaultShader,
     Flatten,
     loadModel,
+    m4,
     rads,
     Repeat,
     Scene,
@@ -11,30 +12,25 @@ import {
 import { zero } from '../utils';
 import { sgp4, twoline2satrec } from 'satellite.js';
 import { drawOrbit } from '../objects/orbit';
-import { useMapCamera } from '../logic/useMapCamera';
-import { useSliderCamera } from '../logic/useSliderCamera';
+import { useTouchCamera } from '../logic/useTouchCamera';
+import { drawCube } from '../drawing';
+import { NaviCube } from '../objects/naviCube';
 
+let initialY = 0;
 export const MenuScene = new Scene({
     title: 'menu',
     shaders: [DefaultShader],
     init: (engine) => {
-        const { camera } = engine.activeScene;
         engine.settings.fogColor = [1, 1, 1, 1];
-        // camera.setPosition(0, 0, 200);
+        // engine.activeScene.camera.rotation[1] = -rads(51.6);
+        // engine.activeScene.camera.rotation[2] = rads(45);
+        const { camera } = MenuScene;
+        camera.offset[2] = 400;
     },
     update: (time, engine) => {
-        const { camera, objects } = engine.activeScene;
-        const { position } = objects[0];
+        useTouchCamera(engine, initialY);
 
-        useSliderCamera(engine);
-        // camera.setPosition(0, 0, 300);
-        // // useMapCamera(engine, camera, 6);
-        // camera.target = Vec3(position[0], position[1], position[2]);
-        // camera.position = Vec3(position[0], position[1], position[2]);
-        // camera.position[2] -= 200;
-        // camera.rotateX(camera.rotation[0] + time / 1000);
-        // camera.rotateY(camera.rotation[1] + time / 1000);
-        // camera.rotateZ(camera.rotation[2] + time / 1000);
+        // useSliderCamera(engine);
     },
     status: 'initializing',
 });
@@ -58,6 +54,8 @@ fetch('models/ball.obj')
         var satrec = twoline2satrec(tleLine1, tleLine2);
         const orbitScale = 400;
 
+        initialY = -satrec.inclo;
+
         MenuScene.addObject({
             ...model,
             colors,
@@ -66,12 +64,13 @@ fetch('models/ball.obj')
             rotation: zero(),
             scale: [scale, scale, scale],
             properties: {
-                t: 1680398531648,
+                acc: 0,
             },
             update: function (t) {
+                this.properties.acc += t * 10;
                 const { position } = sgp4(
                     satrec,
-                    (new Date().getTime() - this.properties.t) / 1000
+                    this.properties.acc / 1000
                 ) as any;
 
                 this.position = [
@@ -83,9 +82,10 @@ fetch('models/ball.obj')
             allowClipping: true,
         });
 
-        for (const object of drawOrbit(satrec, scale, orbitScale)) {
+        for (const object of drawOrbit(satrec, 0, scale, orbitScale)) {
             MenuScene.addObject(object);
         }
 
+        MenuScene.addObject(NaviCube());
         MenuScene.status = 'ready';
     });
