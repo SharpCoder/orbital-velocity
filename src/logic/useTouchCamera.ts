@@ -1,10 +1,15 @@
+import { debug } from 'svelte/internal';
 import {
+    cylinder,
     degs,
+    m3,
+    m4,
     r,
     rads,
     rotationBetweenPoints,
     type Engine,
 } from 'webgl-engine';
+import { drawCylinder, lineTo } from '../drawing';
 
 type CameraMode = 'initializing' | 'inactive' | 'pan' | 'rotate';
 let rx = 0, // rotateX
@@ -15,7 +20,8 @@ let rx = 0, // rotateX
     sy = 0, // startY
     wx = 0, // windowX
     wy = 0, // windowY
-    zoom = 200,
+    zoom = 3000,
+    init = false,
     mode: CameraMode = 'initializing';
 
 document.addEventListener('mousedown', (evt) => {
@@ -27,8 +33,15 @@ document.addEventListener('wheel', (evt) => {
     zoom += evt.deltaY / 10;
 });
 
-export function useTouchCamera(engine: Engine, initialY) {
+export function useTouchCamera(engine: Engine, initialY: number) {
     const { camera } = engine.activeScene;
+
+    if (!init) {
+        init = true;
+        // camera.rotation[1] = initialY;
+        // camera.rotation[0] = rads(90 - 15);
+        // camera.position[0] = rads(90);
+    }
 
     switch (engine.mousebutton) {
         case 1: {
@@ -61,11 +74,8 @@ export function useTouchCamera(engine: Engine, initialY) {
         camera.offset[1] = wy + deltaY / 3;
     } else if (mode === 'rotate') {
         // Do rotate logic
-        const mag = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
-        camera.rotation[0] = wrx - rads(deltaY / 3);
-        camera.rotation[1] = wry + rads(deltaX / 3);
-        // camera.rotation[1] = wry + rads(deltaX / 3);
-        // camera.rotation[2] = wrz - rads(deltaY / 3);
+        camera.rotation[0] = (wrx - rads(deltaY / 3)) % rads(360);
+        camera.rotation[1] = (wry + rads(deltaX / 3)) % rads(360);
     }
 
     engine.debug(`${r(degs(camera.rotation[0]))} [rx]`);
@@ -76,4 +86,29 @@ export function useTouchCamera(engine: Engine, initialY) {
     // camera.rotation[1] = initialY;
     camera.offset[2] = zoom;
     // camera.position[2] = zoom;
+}
+
+function getAnglesFromMatrix(mm: number[]) {
+    let thetaX = 0,
+        thetaY = 0,
+        thetaZ = 0;
+
+    function idx(row, col) {
+        return (col - 1) * 4 + row - 1;
+    }
+
+    thetaX = Math.asin(mm[idx(3, 2)]);
+    if (thetaX < Math.PI / 2) {
+        if (thetaX > -Math.PI / 2) {
+            thetaZ = Math.atan2(-mm[idx(1, 2)], mm[idx(2, 2)]);
+            thetaY = Math.atan2(-mm[idx(3, 1)], mm[idx(3, 3)]);
+        } else {
+            thetaZ = -Math.atan2(-mm[idx(1, 3)], mm[idx(1, 1)]);
+            thetaY = 0;
+        }
+    } else {
+        thetaZ = Math.atan2(mm[idx(1, 3)], mm[idx(1, 1)]);
+        thetaY = 0;
+    }
+    return [thetaX, thetaY, thetaZ];
 }

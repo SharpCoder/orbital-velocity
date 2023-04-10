@@ -16,32 +16,42 @@ export type CubProps = {
     z: number;
     size: Vec3D;
     color?: Vec3D;
+    colors?: number[];
 };
-export function drawCube({ x, y, z, size, color }: CubProps): Obj3d {
+export function drawCube({
+    x,
+    y,
+    z,
+    size,
+    color,
+    colors,
+    ...props
+}: CubProps & Partial<Obj3d>): Obj3d {
     return {
         vertexes: cuboid(size[0], size[1], size[2]),
-        colors: Flatten(
-            color
-                ? Repeat(color, 36)
-                : [
-                      Repeat(Vec3(0, 199, 255), 6),
-                      Repeat(Vec3(255, 0, 199), 6),
-                      Repeat(Vec3(199, 255, 0), 6),
-                      Repeat(Vec3(0, 255, 222), 6),
-                      Repeat(Vec3(222, 0, 255), 6),
-                      Repeat(Vec3(255, 222, 0), 6),
-                  ]
-        ),
+        colors:
+            colors ??
+            Flatten(
+                color
+                    ? Repeat(color, 36)
+                    : [
+                          Repeat(Vec3(0, 199, 255), 6),
+                          Repeat(Vec3(255, 0, 199), 6),
+                          Repeat(Vec3(199, 255, 0), 6),
+                          Repeat(Vec3(0, 255, 222), 6),
+                          Repeat(Vec3(222, 0, 255), 6),
+                          Repeat(Vec3(255, 222, 0), 6),
+                      ]
+            ),
         offsets: [-size[0] / 2, -size[1] / 2, -size[2] / 2],
         position: [x, y, z],
         rotation: zeros(),
+        ...props,
     };
 }
 
 export type CylinderProps = {
-    x: number;
-    y: number;
-    z: number;
+    position: number[];
     sides: number;
     length: number;
     thickness: number;
@@ -49,9 +59,7 @@ export type CylinderProps = {
     color?: Vec3D;
 };
 export function drawCylinder({
-    x,
-    y,
-    z,
+    position,
     rotation,
     sides,
     length,
@@ -64,8 +72,8 @@ export function drawCylinder({
     return {
         vertexes,
         colors: Flatten(Repeat(color ?? [255, 0, 0], vertexes.length / 3)),
-        offsets: [-sizes[0] / 2, -sizes[1] / 2, -sizes[2] / 2],
-        position: [x, y, z],
+        offsets: [-sizes[0], -sizes[1], -sizes[2] / 2],
+        position,
         rotation: rotation ?? zeros(),
     };
 }
@@ -78,13 +86,13 @@ export type LineToProps = {
     thickness?: number;
 };
 
-export function lineTo({
+export function lineToPositionAndRotation({
     from,
     to,
-    sides,
-    thickness,
-    color,
-}: LineToProps): Obj3d {
+}: {
+    from: number[];
+    to: number[];
+}): { length: number; position: number[]; rotation: number[] } {
     const [x1, y1, z1] = from;
     const [x2, y2, z2] = to;
     const min = [Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2)];
@@ -107,15 +115,27 @@ export function lineTo({
     );
 
     return {
+        length,
+        position: midpoint,
+        rotation: rotationBetweenPoints(from, to),
+    };
+}
+
+export function lineTo({
+    from,
+    to,
+    sides,
+    thickness,
+    color,
+    ...props
+}: LineToProps & Partial<Obj3d>): Obj3d {
+    return {
         ...drawCylinder({
-            x: midpoint[0],
-            y: midpoint[1],
-            z: midpoint[2],
+            ...lineToPositionAndRotation({ from, to }),
             sides: sides ?? 10,
             thickness: thickness ?? 0.4,
             color,
-            length,
-            rotation: rotationBetweenPoints(from, to),
         }),
+        ...props,
     };
 }

@@ -13,8 +13,9 @@ import { zero } from '../utils';
 import { sgp4, twoline2satrec } from 'satellite.js';
 import { drawOrbit } from '../objects/orbit';
 import { useTouchCamera } from '../logic/useTouchCamera';
-import { drawCube } from '../drawing';
+import { drawCube, lineTo } from '../drawing';
 import { NaviCube } from '../objects/naviCube';
+import { Propagator } from '../math/propagator';
 
 let initialY = 0;
 export const MenuScene = new Scene({
@@ -54,36 +55,56 @@ fetch('models/ball.obj')
         var satrec = twoline2satrec(tleLine1, tleLine2);
         const orbitScale = 400;
 
-        initialY = -satrec.inclo;
+        // initialY = -satrec.inclo;
 
-        MenuScene.addObject({
-            ...model,
-            colors,
-            offsets: zero(),
-            position: zero(),
-            rotation: zero(),
-            scale: [scale, scale, scale],
-            properties: {
-                acc: 0,
-            },
-            update: function (t) {
-                this.properties.acc += t * 10;
-                const { position } = sgp4(
-                    satrec,
-                    this.properties.acc / 1000
-                ) as any;
+        // MenuScene.addObject({
+        //     ...model,
+        //     colors,
+        //     offsets: zero(),
+        //     position: zero(),
+        //     rotation: zero(),
+        //     scale: [scale, scale, scale],
+        //     properties: {
+        //         acc: 0,
+        //     },
+        //     update: function (t) {
+        //         this.properties.acc += t * 10;
+        //         const { position } = sgp4(
+        //             satrec,
+        //             this.properties.acc / 1000
+        //         ) as any;
 
-                this.position = [
-                    position.x / orbitScale,
-                    position.y / orbitScale,
-                    position.z / orbitScale,
-                ];
-            },
-            allowClipping: true,
+        //         this.position = [
+        //             position.x / orbitScale,
+        //             position.y / orbitScale,
+        //             position.z / orbitScale,
+        //         ];
+        //     },
+        //     allowClipping: true,
+        // });
+
+        // for (const object of drawOrbit(satrec, 0, scale, orbitScale)) {
+        //     MenuScene.addObject(object);
+        // }
+
+        const propagator = new Propagator();
+        const coords2d = propagator.propagate({
+            semiMajorAxis: 100,
+            semiMinorAxis: 50,
         });
 
-        for (const object of drawOrbit(satrec, 0, scale, orbitScale)) {
-            MenuScene.addObject(object);
+        for (let i = 0; i < coords2d.length - 1; i++) {
+            const from = coords2d[i];
+            const to = coords2d[i + 1];
+
+            MenuScene.addObject(
+                lineTo({
+                    from: [...from, 0],
+                    to: [...to, 0],
+                    thickness: 0.8,
+                    color: [0, 0, 0],
+                })
+            );
         }
 
         MenuScene.addObject(NaviCube());
