@@ -21,12 +21,15 @@ const Sun = physicsEngine.addBody({
 const Sun2 = physicsEngine.addBody({
     position: [-2000, 0, 500],
     velocity: [10, 20, 30],
-    mass: 1.0,
+    mass: 0.0,
 });
 
+const dt = 0.75;
 const orbitThickness = 10;
-const solutions = physicsEngine.project(1, 150);
+const solutions = physicsEngine.project(dt, 300);
 const segments = [];
+
+console.log(solutions);
 
 for (let i = 0; i < solutions.length - 1; i++) {
     const from = solutions[i][0];
@@ -86,7 +89,7 @@ const Borg = drawCube({
     z: 0,
     size: [50, 50, 50],
     update: function (t, engine) {
-        physicsEngine.update(1);
+        physicsEngine.update(dt);
         this.position = Satellite.position;
     },
 });

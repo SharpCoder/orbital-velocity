@@ -6,6 +6,7 @@ type State = {
     positions: Array<Array<number>>;
     positionMatrix: Array<Array<Array<number>>>;
     velocities: Array<Array<number>>;
+    fixed: Array<boolean>;
     masses: Array<number>;
 };
 
@@ -34,6 +35,7 @@ export class PhysicsEngine {
             positionMatrix: [],
             velocities: [],
             masses: [],
+            fixed: [],
         };
     }
 
@@ -53,6 +55,8 @@ export class PhysicsEngine {
         const positions = new Array(this.bodies.length);
         const positionMatrix = new Array(this.bodies.length);
         const velocities = new Array(this.bodies.length);
+        const accelerations = new Array(this.bodies.length);
+        const fixed = new Array(this.bodies.length);
         const masses = new Array(this.bodies.length);
 
         for (let i = 0; i < this.bodies.length; i++) {
@@ -60,6 +64,7 @@ export class PhysicsEngine {
             positionMatrix[i] = new Array(this.bodies.length);
             velocities[i] = new Array(0, 0, 0);
             positions[i] = new Array(0, 0, 0);
+            accelerations[i] = new Array(0, 0, 0);
 
             for (let r = 0; r < this.bodies.length; r++) {
                 positionMatrix[i][r] = new Array(0, 0, 0);
@@ -77,6 +82,7 @@ export class PhysicsEngine {
             }
 
             masses[i] = body.mass;
+            fixed[i] = body.fixed ? true : false;
         }
 
         return {
@@ -84,19 +90,24 @@ export class PhysicsEngine {
             positionMatrix,
             velocities,
             masses,
+            fixed,
         };
     }
 
-    private calculateVelocities(time_step: number, state: State): State {
+    private calculateVelocities(dt: number, state: State): State {
         const result: State = {
             positions: [...state.positions],
             positionMatrix: [...state.positionMatrix],
             velocities: [...state.velocities],
             masses: [...state.masses],
+            fixed: [...state.fixed],
         };
+
+        const acceleration = new Array(state.velocities.length);
 
         for (let i = 0; i < state.positionMatrix.length; i++) {
             const positions = state.positionMatrix[i];
+            acceleration[i] = new Array(0, 0, 0);
 
             // Each j is another body
             for (let k = 0; k < positions.length; k++) {
@@ -108,42 +119,39 @@ export class PhysicsEngine {
 
                 const r3 = Math.pow(r, 3);
                 for (let j = 0; j < 3; j++) {
-                    result.velocities[i][j] +=
+                    acceleration[i][j] +=
                         ((G * positions[k][j]) / r3) *
-                        (state.masses[i] + state.masses[k]);
+                        (state.masses[i] + state.masses[k]) *
+                        dt;
                 }
             }
         }
 
         // Recalculate the matrix position differential
         // and update the other state variables
-        for (let i = 0; i < result.velocities.length; i++) {
-            const self_position = result.positions[i];
+        for (let i = 0; i < result.positionMatrix.length; i++) {
+            if (result.fixed[i]) continue;
             for (let j = 0; j < 3; j++) {
+                result.velocities[i][j] += acceleration[i][j];
                 result.positions[i][j] += result.velocities[i][j];
             }
+        }
 
-            for (let r = 0; r < this.bodies.length; r++) {
+        for (let i = 0; i < result.positionMatrix.length; i++) {
+            const self_position = result.positions[i];
+            if (result.fixed[i]) continue;
+
+            for (let r = 0; r < state.positionMatrix.length; r++) {
                 result.positionMatrix[i][r] = new Array(0, 0, 0);
-
-                const other = this.bodies[r];
+                const other_position = result.positions[r];
                 for (let j = 0; j < 3; j++) {
                     result.positionMatrix[i][r][j] =
-                        other.position[j] - self_position[j];
+                        other_position[j] - self_position[j];
                 }
             }
         }
 
         return result;
-    }
-
-    private create_state_vector(target: Body, other: Body) {
-        return [
-            ...target.position,
-            ...other.position,
-            ...target.velocity,
-            ...other.velocity,
-        ];
     }
 
     /** Calculate each position change through time **/
@@ -172,7 +180,7 @@ export class PhysicsEngine {
             if (target.fixed === true) continue;
             for (let j = 0; j < 3; j++) {
                 target.velocity[j] = next_state.velocities[i][j];
-                target.position[j] += target.velocity[j];
+                target.position[j] = next_state.positions[i][j];
             }
         }
     }
