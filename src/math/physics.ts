@@ -1,3 +1,5 @@
+import { degs, m3 } from 'webgl-engine';
+
 type Vec3d = [number, number, number];
 
 const G = 6.6743e-20;
@@ -94,6 +96,16 @@ export class PhysicsEngine {
         };
     }
 
+    private cloneState(state: State): State {
+        return {
+            fixed: [...state.fixed],
+            masses: [...state.masses],
+            positions: [...state.positions.map((p) => [...p])],
+            positionMatrix: [...state.positionMatrix.map((p) => [...p])],
+            velocities: [...state.velocities.map((p) => [...p])],
+        };
+    }
+
     private calculateVelocities(dt: number, state: State): State {
         const result: State = {
             positions: [...state.positions],
@@ -155,17 +167,13 @@ export class PhysicsEngine {
     }
 
     /** Calculate each position change through time **/
-    project(dt: number, time_t: number) {
+    project(duration: number, step: number) {
         let solutions = [];
         let state = this.createStateMatrix();
 
-        for (let t = 0; t < time_t; t += dt) {
-            const set = [];
-            state = this.calculateVelocities(dt, state);
-            for (let j = 0; j < state.positions.length; j++) {
-                set.push([...state.positions[j]]);
-            }
-            solutions.push(set);
+        for (let t = 0; t < duration; t += step) {
+            state = this.calculateVelocities(step, state);
+            solutions.push(this.cloneState(state));
         }
         return solutions;
     }
@@ -185,3 +193,100 @@ export class PhysicsEngine {
         }
     }
 }
+
+export function calculate_parameters(
+    position: number[],
+    velocity: number[],
+    mass?: number
+) {
+    mass = mass ?? 5.972161874653522e24;
+    const mu = G * mass;
+
+    const r = Math.sqrt(
+        Math.pow(position[0], 2) +
+            Math.pow(position[1], 2) +
+            Math.pow(position[2], 2)
+    );
+    const v = Math.sqrt(
+        Math.pow(velocity[0], 2) +
+            Math.pow(velocity[1], 2) +
+            Math.pow(velocity[2], 2)
+    );
+    const h_vec = m3.cross(position, velocity);
+    const h = Math.sqrt(
+        Math.pow(h_vec[0], 2) + Math.pow(h_vec[1], 2) + Math.pow(h_vec[2], 2)
+    );
+
+    const theta = Math.acos(h / (r * v));
+
+    let e_vec = m3.cross(velocity, h_vec);
+    for (let i = 0; i < 3; i++) {
+        e_vec[i] /= mu;
+        e_vec[i] -= position[i] / r;
+    }
+
+    const e = Math.sqrt(
+        Math.pow(e_vec[0], 2) + Math.pow(e_vec[1], 2) + Math.pow(e_vec[2], 2)
+    );
+
+    let nu_r_vec = [...position];
+    let nu_e_vec = [...e_vec];
+
+    for (let i = 0; i < 3; i++) {
+        nu_r_vec[i] /= r;
+        nu_e_vec[i] /= e;
+    }
+
+    const p = Math.pow(h, 2) / mu;
+    const r_min = p / (1 + e * Math.cos(0));
+    const r_max = p / (1 + e * Math.cos(Math.PI));
+    const a = (r_max + r_min) / 2;
+    const b = a * Math.sqrt(1 - Math.pow(e, 2));
+    const l = a * (1 - Math.pow(e, 2));
+    const al = Math.pow(b, 2);
+    const semiMajorAxis = Math.pow(b, 2) / l;
+
+    // let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
+
+    return {
+        r,
+        r_min,
+        r_max,
+        semiMajorAxis,
+        v,
+        h,
+        e,
+    };
+}
+
+// window['pos'] = [1.2756, 1.9135, 3.1891];
+// window['vel'] = [7.9053, 15.8106, 0];
+
+window['pos'] = [1000, 5000, 7000];
+window['vel'] = [3, 4, 5];
+
+window['calculate_parameters'] = calculate_parameters;
+
+export function orbitalPeriod(states: State[], targetOfInterest: number) {
+    // Try to find the semi-major axis
+    // Take the origin point
+    const idx = 0;
+
+    let origin = [...states[idx].positions[targetOfInterest]];
+    const velocity = [...states[idx].velocities[targetOfInterest]];
+
+    const mass =
+        [...states[idx].masses].sort((a, b) => b - a)[0] +
+        states[idx].masses[targetOfInterest];
+
+    const parameters = calculate_parameters(origin, velocity, mass);
+
+    // Return the orbital period
+    return (
+        2 *
+        Math.PI *
+        Math.sqrt(Math.pow(parameters.semiMajorAxis, 3) / (G * mass))
+    );
+}
+
+window['m3'] = m3;

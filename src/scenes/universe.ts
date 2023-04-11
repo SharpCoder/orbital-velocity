@@ -2,7 +2,7 @@ import { DefaultShader, rads, Scene } from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { drawCube, lineTo } from '../drawing';
 import { NaviCube } from '../objects/naviCube';
-import { PhysicsEngine } from '../math/physics';
+import { orbitalPeriod, PhysicsEngine } from '../math/physics';
 
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
@@ -20,20 +20,20 @@ const Sun = physicsEngine.addBody({
 
 const Sun2 = physicsEngine.addBody({
     position: [-2000, 0, 500],
-    velocity: [10, 20, 30],
-    mass: 0.0,
+    velocity: [15, 20, 30],
+    mass: 1.0,
+    fixed: false,
 });
 
-const dt = 0.75;
+const dt = 1;
 const orbitThickness = 10;
-const solutions = physicsEngine.project(dt, 300);
+const solutions = physicsEngine.project(150, dt);
 const segments = [];
 
-console.log(solutions);
-
 for (let i = 0; i < solutions.length - 1; i++) {
-    const from = solutions[i][0];
-    const to = solutions[i + 1][0];
+    const from = solutions[i].positions[0];
+    const to = solutions[i + 1].positions[0];
+
     segments.push(
         lineTo({
             from: [...from],
@@ -45,6 +45,7 @@ for (let i = 0; i < solutions.length - 1; i++) {
 }
 
 let initialY = 0;
+
 export const UniverseScene = new Scene({
     title: 'universe',
     shaders: [DefaultShader],
@@ -59,26 +60,29 @@ export const UniverseScene = new Scene({
         useTouchCamera(engine, initialY);
 
         // Update the orbit
-        // const next_solutions = physicsEngine.project(110);
-        // for (let i = 0; i < segments.length; i++) {
-        //     const segment = segments[i];
-        //     UniverseScene.removeObject(segment);
-        // }
+        const period = orbitalPeriod([physicsEngine.state], 0);
+        const next_solutions = physicsEngine.project(period, dt);
+        for (let i = 0; i < segments.length; i++) {
+            const segment = segments[i];
+            UniverseScene.removeObject(segment);
+        }
 
-        // segments.splice(0, segments.length);
+        segments.splice(0, segments.length);
 
-        // for (let i = 0; i < next_solutions.length - 1; i++) {
-        //     const from = next_solutions[i][0];
-        //     const to = next_solutions[i + 1][0];
-        //     const next_segment = lineTo({
-        //         from: [...from],
-        //         to: [...to],
-        //         thickness: orbitThickness,
-        //         color: [0, 0, 0],
-        //     });
-        //     segments.push(next_segment);
-        //     UniverseScene.addObject(next_segment);
-        // }
+        for (let i = 0; i < next_solutions.length - 1; i++) {
+            const from = next_solutions[i].positions[0];
+            const to = next_solutions[i + 1].positions[0];
+            const next_segment = lineTo({
+                from: [...from],
+                to: [...to],
+                thickness: orbitThickness,
+                color: [0, 0, 0],
+            });
+            segments.push(next_segment);
+            UniverseScene.addObject(next_segment);
+        }
+
+        engine.debug(`orbital period ${next_solutions.length}`);
     },
     status: 'initializing',
 });
