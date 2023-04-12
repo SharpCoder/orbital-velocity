@@ -260,11 +260,28 @@ export function keplerianParameters(
     const orbitalPeriod =
         2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * masses));
 
+    const K = [0, 0, 1];
+    const N_vec = m3.cross(K, h_vec);
+    const N = Math.sqrt(
+        Math.pow(N_vec[0], 2) + Math.pow(N_vec[1], 2) + Math.pow(N_vec[2], 2)
+    );
+
+    let Omega = Math.acos(N_vec[0] / N);
+    if (N[1] >= 0) {
+        Omega = 2 * Math.PI - Omega;
+    }
+
+    let omega = Math.acos(m3.dot(N_vec, e_vec) / (N * e));
+    if (e_vec[2] < 0) {
+        omega = 2 * Math.PI - omega;
+    }
     return {
         r,
         semiMajorAxis,
         semiMinorAxis,
         orbitalPeriod,
+        rightAscensionNode: Omega,
+        argumentOfPeriapsis: omega,
         nu,
         i,
         v,

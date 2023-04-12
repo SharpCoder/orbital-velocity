@@ -20,7 +20,7 @@ let rx = 0, // rotateX
     sy = 0, // startY
     wx = 0, // windowX
     wy = 0, // windowY
-    zoom = 3000,
+    zoom = 2000,
     init = false,
     mode: CameraMode = 'initializing';
 
@@ -30,7 +30,7 @@ document.addEventListener('mousedown', (evt) => {
 });
 
 document.addEventListener('wheel', (evt) => {
-    zoom += evt.deltaY / 10;
+    zoom += evt.deltaY / 1;
 });
 
 export function useTouchCamera(engine: Engine, initialY: number) {
@@ -70,8 +70,8 @@ export function useTouchCamera(engine: Engine, initialY: number) {
     const deltaY = engine.mousey - sy;
     if (mode === 'pan') {
         // Do pan logic
-        camera.offset[0] = wx + deltaX / 3;
-        camera.offset[1] = wy + deltaY / 3;
+        camera.offset[0] = wx + deltaX;
+        camera.offset[1] = wy + deltaY;
     } else if (mode === 'rotate') {
         // Do rotate logic
         camera.rotation[0] = (wrx - rads(deltaY / 3)) % rads(360);
@@ -81,7 +81,6 @@ export function useTouchCamera(engine: Engine, initialY: number) {
     engine.debug(`${r(degs(camera.rotation[0]))} [rx]`);
     engine.debug(`${r(degs(camera.rotation[1]))} [ry]`);
     engine.debug(`${r(degs(camera.rotation[2]))} [rz]`);
-    engine.debug(`${r(degs(initialY))} [incl]`);
 
     // camera.rotation[1] = initialY;
     camera.offset[2] = zoom;
