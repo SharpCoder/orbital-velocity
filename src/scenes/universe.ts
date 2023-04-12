@@ -10,11 +10,10 @@ import {
 import { Propagator } from '../math/propagator';
 import { createContainer } from '../objects/container';
 
-const propagator = new Propagator();
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
     position: [2000, 55, 51],
-    velocity: [-15, 10, 40],
+    velocity: [0, 20, 40],
     mass: 1,
 });
 
@@ -28,32 +27,18 @@ const Sun = physicsEngine.addBody({
 const Sun2 = physicsEngine.addBody({
     position: [-2000, 0, 0],
     velocity: [22, 0, -40],
-    mass: 1e24,
+    mass: 2,
     // fixed: false,
-    disabled: true,
 });
 
+const cubeSize = 60;
+const sunSize = 100;
 const dt = 1;
-const orbitThickness = 10;
+const orbitThickness = 5;
 const segments = [];
-
-// const solutions = physicsEngine.project(150, dt);
-
-// for (let i = 0; i < solutions.length - 1; i++) {
-//     const from = solutions[i].positions[0];
-//     const to = solutions[i + 1].positions[0];
-
-//     segments.push(
-//         lineTo({
-//             from: [...from],
-//             to: [...to],
-//             thickness: orbitThickness,
-//             color: [0, 0, 0],
-//         })
-//     );
-// }
-
 let initialY = 0;
+let next = 0;
+let elapsed = 0;
 const orbit = createContainer();
 
 export const UniverseScene = new Scene({
@@ -61,6 +46,7 @@ export const UniverseScene = new Scene({
     shaders: [DefaultShader],
     init: (engine) => {
         engine.settings.fogColor = [1, 1, 1, 1];
+        engine.settings.fogColor = [0.0, 0.0, 0.0, 1];
         const { camera } = UniverseScene;
         camera.offset[2] = 3000;
         camera.rotation[0] = -rads(63);
@@ -69,6 +55,7 @@ export const UniverseScene = new Scene({
     update: (time, engine) => {
         useTouchCamera(engine, initialY);
         physicsEngine.update(dt);
+        elapsed++;
 
         // Update the orbit
         const state = physicsEngine.state;
@@ -78,26 +65,34 @@ export const UniverseScene = new Scene({
             Sun.mass
         );
 
-        const period = orbitalPeriod([physicsEngine.state], 0);
-        const next_solutions = physicsEngine.project(Math.min(period, 300), dt);
-        engine.activeScene.removeObject(orbit);
-        orbit.children.splice(0, orbit.children.length);
+        if (elapsed > next) {
+            const period = orbitalPeriod([physicsEngine.state], 0);
+            next = elapsed + period;
 
-        for (let i = 0; i < next_solutions.length - 1; i++) {
-            const from = next_solutions[i].positions[0];
-            const to = next_solutions[i + 1].positions[0];
-            const next_segment = lineTo({
-                from: [...from],
-                to: [...to],
-                thickness: orbitThickness,
-                color: [0, 0, 0],
-            });
-            // segments.push(next_segment);
-            orbit.children.push(next_segment);
+            const next_solutions = physicsEngine.project(
+                Math.min(period + 1, 400),
+                dt
+            );
+            engine.activeScene.removeObject(orbit);
+            orbit.children.splice(0, orbit.children.length);
+
+            const color = [255, 128, 0];
+
+            for (let i = 0; i < next_solutions.length - 1; i++) {
+                const from = next_solutions[i].positions[0];
+                const to = next_solutions[i + 1].positions[0];
+                const next_segment = lineTo({
+                    from: [...from],
+                    to: [...to],
+                    thickness: orbitThickness,
+                    color,
+                });
+
+                orbit.children.push(next_segment);
+            }
+
+            UniverseScene.addObject(orbit);
         }
-
-        // engine.debug(`orbital period ${Math.round(period)}`);
-        UniverseScene.addObject(orbit);
     },
     status: 'initializing',
 });
@@ -106,7 +101,7 @@ const Borg = drawCube({
     x: 0,
     y: 0,
     z: 0,
-    size: [50, 50, 50],
+    size: [cubeSize, cubeSize, cubeSize],
     update: function (t, engine) {
         this.position = Satellite.position;
     },
@@ -117,8 +112,8 @@ UniverseScene.addObject(
         x: Sun.position[0],
         y: Sun.position[1],
         z: Sun.position[2],
-        size: [100, 100, 100],
-        color: [0, 0, 0],
+        size: [sunSize, sunSize, sunSize],
+        color: [255, 128, 0],
         update: function (t, engine) {
             this.position = Sun.position;
         },
@@ -130,31 +125,9 @@ UniverseScene.addObject(
         x: Sun2.position[0],
         y: Sun2.position[1],
         z: Sun2.position[2],
-        size: [50, 50, 50],
+        size: [cubeSize, cubeSize, cubeSize],
         update: function (t, engine) {
             this.position = Sun2.position;
-        },
-    })
-);
-
-UniverseScene.addObject(
-    drawCube({
-        x: Sun.position[0],
-        y: Sun.position[1],
-        z: Sun.position[2],
-        size: [50, 50, 50],
-        color: [255, 0, 0],
-        update: function (t, engine) {
-            const state = physicsEngine.state;
-            const position = state.positions[0];
-            const velocity = state.velocities[0];
-            const mass = Sun.mass;
-            const parameters = calculate_parameters(position, velocity, mass);
-            this.position = [parameters.semiMajorAxis, 0, 0];
-            engine.debug(
-                `${velocity.map((a) => Math.round(a)).join(',')} velocity`
-            );
-            engine.debug(`${Math.round(parameters.v)} v`);
         },
     })
 );
