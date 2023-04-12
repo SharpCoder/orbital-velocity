@@ -3,13 +3,12 @@ import { degs, m3 } from 'webgl-engine';
 type Vec3d = [number, number, number];
 
 const G = 6.6743e-20;
-
+type xyz = Array<number>;
 type State = {
-    positions: Array<Array<number>>;
-    positionMatrix: Array<Array<Array<number>>>;
-    velocities: Array<Array<number>>;
-    fixed: Array<boolean>;
-    masses: Array<number>;
+    positions: Array<xyz>;
+    positionMatrix: Array<Array<xyz>>;
+    velocities: Array<xyz>;
+    accelerations: Array<xyz>;
 };
 
 export type Body = {
@@ -19,10 +18,10 @@ export type Body = {
     position: Vec3d;
     /** The current velcoity in 3d space */
     velocity: Vec3d;
+    /** The previous acceleration vector */
+    acceleration: Vec3d;
     /** The mass of the object */
     mass: number;
-    /** If true, the position and velocity vectors will never update */
-    fixed?: boolean;
     /** If true, this object is skipped entirely */
     disabled?: boolean;
 };
@@ -38,15 +37,15 @@ export class PhysicsEngine {
             positions: [],
             positionMatrix: [],
             velocities: [],
-            masses: [],
-            fixed: [],
+            accelerations: [],
         };
     }
 
     /** Add a body to the physics engine, return its internal id */
-    addBody(body: Omit<Body, 'internalId'>): Body {
+    addBody(body: Omit<Omit<Body, 'internalId'>, 'acceleration'>): Body {
         const item: Body = {
             ...body,
+            acceleration: [0, 0, 0],
             internalId: this.bodies.length,
         };
 
@@ -89,28 +88,26 @@ export class PhysicsEngine {
             for (let j = 0; j < 3; j++) {
                 positions[i][j] = body.position[j];
                 velocities[i][j] = body.velocity[j];
+                accelerations[i][j] = body.acceleration[j];
             }
 
             masses[i] = body.mass;
-            fixed[i] = body.fixed ? true : false;
         }
 
         return {
             positions,
             positionMatrix,
             velocities,
-            masses,
-            fixed,
+            accelerations,
         };
     }
 
     private cloneState(state: State): State {
         return {
-            fixed: [...state.fixed],
-            masses: [...state.masses],
             positions: [...state.positions.map((p) => [...p])],
             positionMatrix: [...state.positionMatrix.map((p) => [...p])],
             velocities: [...state.velocities.map((p) => [...p])],
+            accelerations: [...state.accelerations.map((p) => [...p])],
         };
     }
 
@@ -119,12 +116,10 @@ export class PhysicsEngine {
             positions: [...state.positions],
             positionMatrix: [...state.positionMatrix],
             velocities: [...state.velocities],
-            masses: [...state.masses],
-            fixed: [...state.fixed],
+            accelerations: [...state.accelerations],
         };
 
         const acceleration = new Array(state.velocities.length);
-        const cache = {};
 
         for (let i = 0; i < acceleration.length; i++) {
             acceleration[i] = new Array(0, 0, 0);
@@ -137,7 +132,6 @@ export class PhysicsEngine {
             // Each j is another body
             for (let k = 0; k < positions.length; k++) {
                 if (k === i) continue;
-                // if (cache[`${k}_${i}`] || cache[`${i}_${k}`]) continue;
 
                 const r = Math.sqrt(
                     positions[k]
@@ -153,11 +147,8 @@ export class PhysicsEngine {
 
                 const r2 = Math.pow(r, 2);
                 for (let j = 0; j < 3; j++) {
-                    const F1 = ((-G * state.masses[k]) / r2) * unit[j];
-                    // const F2 = ((-G * state.masses[i]) / r2) * unit[j];
-
+                    const F1 = ((-G * this.bodies[k].mass) / r2) * unit[j];
                     acceleration[i][j] += F1;
-                    // acceleration[k][j] -= F2;
                 }
             }
         }
@@ -165,17 +156,15 @@ export class PhysicsEngine {
         // Recalculate the matrix position differential
         // and update the other state variables
         for (let i = 0; i < result.positionMatrix.length; i++) {
-            if (result.fixed[i]) continue;
             for (let j = 0; j < 3; j++) {
-                result.velocities[i][j] += acceleration[i][j];
+                result.velocities[i][j] += acceleration[i][j] * dt;
                 result.positions[i][j] += result.velocities[i][j];
+                result.accelerations[i][j] = acceleration[i][j];
             }
         }
 
         for (let i = 0; i < result.positionMatrix.length; i++) {
             const self_position = result.positions[i];
-            if (result.fixed[i]) continue;
-
             for (let r = 0; r < state.positionMatrix.length; r++) {
                 result.positionMatrix[i][r] = new Array(0, 0, 0);
                 const other_position = result.positions[r];
@@ -209,10 +198,10 @@ export class PhysicsEngine {
 
         for (let i = 0; i < bodies.length; i++) {
             const target = bodies[i];
-            if (target.fixed === true) continue;
             for (let j = 0; j < 3; j++) {
                 target.velocity[j] = next_state.velocities[i][j];
                 target.position[j] = next_state.positions[i][j];
+                target.acceleration[j] = next_state.accelerations[i][j];
             }
         }
 
@@ -220,14 +209,12 @@ export class PhysicsEngine {
     }
 }
 
-export function calculate_parameters(
+export function keplerianParameters(
     position: number[],
     velocity: number[],
-    mass?: number
+    masses: number
 ) {
-    mass = mass ?? 5.972161874653522e24;
-    const mu = G * mass;
-
+    const mu = G * masses;
     const r = Math.sqrt(
         Math.pow(position[0], 2) +
             Math.pow(position[1], 2) +
@@ -244,7 +231,6 @@ export function calculate_parameters(
     );
 
     const i = Math.acos(h_vec[2] / h);
-    const theta = Math.acos(h / (r * v));
 
     let e_vec = m3.cross(velocity, h_vec);
     for (let i = 0; i < 3; i++) {
@@ -267,75 +253,22 @@ export function calculate_parameters(
     const p = Math.pow(h, 2) / mu;
     const r_min = p / (1 + e * Math.cos(0));
     const r_max = p / (1 + e * Math.cos(Math.PI));
+    const semiMajorAxis = (r_max + r_min) / 2;
+    const semiMinorAxis = Math.sqrt(r_max * r_min);
 
-    const a = (r_max + r_min) / 2;
-    const b = a * Math.sqrt(1 - Math.pow(e, 2));
-    const l = a * (1 - Math.pow(e, 2));
-    const al = Math.pow(b, 2);
-    const semiMajorAxis = a; //Math.pow(b, 2) / l;
-    const semiMinorAxis = b;
-
-    // let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
+    let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
+    const orbitalPeriod =
+        2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * masses));
 
     return {
         r,
-        r_min,
-        r_max,
         semiMajorAxis,
         semiMinorAxis,
+        orbitalPeriod,
+        nu,
         i,
         v,
         h,
         e,
     };
 }
-
-// window['pos'] = [1.2756, 1.9135, 3.1891];
-// window['vel'] = [7.9053, 15.8106, 0];
-
-window['pos'] = [1000, 5000, 7000];
-window['vel'] = [3, 4, 5];
-
-window['calculate_parameters'] = calculate_parameters;
-
-export function orbitalPeriod(states: State[], targetOfInterest: number) {
-    // Try to find the semi-major axis
-    // Take the origin point
-    const idx = 0;
-    let largestMass = 0.0;
-    let largestItem = -1;
-
-    for (let i = 0; i < states[idx].masses.length; i++) {
-        if (states[idx].masses[i] > largestMass) {
-            largestItem = i;
-            largestMass = states[idx].masses[i];
-        }
-    }
-
-    let origin = [...states[idx].positions[targetOfInterest]];
-    const velocity = [...states[idx].velocities[targetOfInterest]];
-
-    // Find the relative position
-    const largestPosition = [...states[idx].positions[largestItem]];
-    for (let i = 0; i < 3; i++) {
-        origin[i] = origin[i] - largestPosition[i];
-    }
-
-    const mass = largestMass + states[idx].masses[targetOfInterest];
-    const parameters = calculate_parameters(origin, velocity, mass);
-
-    // Return the orbital period
-    const period2 = Math.sqrt(
-        Math.pow(parameters.semiMajorAxis, 3) /
-            ((G * mass) / (4 * Math.pow(Math.PI, 2)))
-    );
-
-    const period =
-        2 *
-        Math.PI *
-        Math.sqrt(Math.pow(parameters.semiMajorAxis, 3) / (G * mass));
-
-    return period2;
-}
-
-window['m3'] = m3;

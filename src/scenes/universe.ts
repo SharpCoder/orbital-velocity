@@ -2,18 +2,14 @@ import { DefaultShader, rads, Scene } from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { drawCube, lineTo } from '../drawing';
 import { NaviCube } from '../objects/naviCube';
-import {
-    calculate_parameters,
-    orbitalPeriod,
-    PhysicsEngine,
-} from '../math/physics';
+import { keplerianParameters, PhysicsEngine } from '../math/physics';
 import { Propagator } from '../math/propagator';
 import { createContainer } from '../objects/container';
 
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
-    position: [2000, 55, 51],
-    velocity: [0, 20, 40],
+    position: [2500, 0, 0],
+    velocity: [0, 20, 30],
     mass: 1,
 });
 
@@ -21,14 +17,12 @@ const Sun = physicsEngine.addBody({
     position: [0, 0, 0],
     velocity: [0, 0, 0],
     mass: 1e26,
-    fixed: false,
 });
 
 const Sun2 = physicsEngine.addBody({
     position: [-2000, 0, 0],
     velocity: [22, 0, -40],
     mass: 2,
-    // fixed: false,
 });
 
 const cubeSize = 60;
@@ -39,6 +33,7 @@ const segments = [];
 let initialY = 0;
 let next = 0;
 let elapsed = 0;
+let period = 0;
 const orbit = createContainer();
 
 export const UniverseScene = new Scene({
@@ -55,22 +50,21 @@ export const UniverseScene = new Scene({
     update: (time, engine) => {
         useTouchCamera(engine, initialY);
         physicsEngine.update(dt);
-        elapsed++;
+        elapsed += dt;
 
         // Update the orbit
-        const state = physicsEngine.state;
-        const parameters = calculate_parameters(
-            state.positions[0],
-            state.velocities[0],
-            Sun.mass
-        );
-
         if (elapsed > next) {
-            const period = orbitalPeriod([physicsEngine.state], 0);
+            const { orbitalPeriod } = keplerianParameters(
+                Satellite.position,
+                Satellite.velocity,
+                Satellite.mass + Sun.mass
+            );
+
+            period = orbitalPeriod;
             next = elapsed + period;
 
             const next_solutions = physicsEngine.project(
-                Math.min(period + 1, 400),
+                Math.min(period + 1, 300),
                 dt
             );
             engine.activeScene.removeObject(orbit);
@@ -79,8 +73,11 @@ export const UniverseScene = new Scene({
             const color = [255, 128, 0];
 
             for (let i = 0; i < next_solutions.length - 1; i++) {
-                const from = next_solutions[i].positions[0];
-                const to = next_solutions[i + 1].positions[0];
+                let fromId = i;
+                let toId = i + 1;
+
+                const from = next_solutions[fromId].positions[0];
+                const to = next_solutions[toId].positions[0];
                 const next_segment = lineTo({
                     from: [...from],
                     to: [...to],
@@ -93,6 +90,8 @@ export const UniverseScene = new Scene({
 
             UniverseScene.addObject(orbit);
         }
+
+        engine.debug(`${Math.round(period)} [orbital period]`);
     },
     status: 'initializing',
 });

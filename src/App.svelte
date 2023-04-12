@@ -54,45 +54,6 @@
 <canvas id="canvas" bind:this={webglCanvas} />
 
 <style>
-    .sliders {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        position: absolute;
-    }
-    .slider {
-        flex-shrink: 1;
-        display: flex;
-        flex-direction: column-reverse;
-        text-align: left;
-        font-size: 0.8rem;
-        font-family: monospace;
-        padding-left: 20px;
-    }
-
-    .label {
-        display: flex;
-        flex-grow: 1;
-    }
-
-    .slider .label .value {
-        justify-self: flex-end;
-        text-align: right;
-        width: 100%;
-        font-weight: bold;
-    }
-
-    .slider:first-of-type {
-        padding-top: 20px;
-    }
-
-    button {
-        margin-left: 20px;
-        margin-top: 20px;
-        padding: 5px;
-        width: 90%;
-    }
-
     #canvas {
         width: 100%;
         height: 100%;
@@ -102,7 +63,7 @@
         font-family: monospace;
         position: absolute;
         font-size: 1.5rem;
-        color: black;
+        color: white;
         top: 0;
         right: 0;
         padding: 20px;
