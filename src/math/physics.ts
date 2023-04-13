@@ -1,16 +1,10 @@
-import { degs, m3 } from 'webgl-engine';
+import { degs, m3, norm } from 'webgl-engine';
 
 type Vec3d = [number, number, number];
+type StateVector = number[];
 
+let iter = 0;
 const G = 6.6743e-20;
-type xyz = Array<number>;
-type State = {
-    positions: Array<xyz>;
-    positionMatrix: Array<Array<xyz>>;
-    velocities: Array<xyz>;
-    accelerations: Array<xyz>;
-};
-
 export type Body = {
     /** The internal id of this object */
     internalId: number;
@@ -28,17 +22,10 @@ export type Body = {
 
 export class PhysicsEngine {
     bodies: Body[];
-    state: State;
-    matrixes: Record<number, State>;
+    state: StateVector;
 
     constructor() {
         this.bodies = [];
-        this.state = {
-            positions: [],
-            positionMatrix: [],
-            velocities: [],
-            accelerations: [],
-        };
     }
 
     /** Add a body to the physics engine, return its internal id */
@@ -50,7 +37,6 @@ export class PhysicsEngine {
         };
 
         this.bodies.push(item);
-        this.state = this.createStateMatrix();
         return item;
     }
 
@@ -58,154 +44,66 @@ export class PhysicsEngine {
         return this.bodies.filter((x) => x.disabled !== true);
     }
 
-    private createStateMatrix(): State {
-        const bodies = this.enabled_bodies();
+    private solve(vector: StateVector, mass: [number, number]): StateVector {
+        const result: StateVector = [...vector];
 
-        const positions = new Array(bodies.length);
-        const positionMatrix = new Array(bodies.length);
-        const velocities = new Array(bodies.length);
-        const accelerations = new Array(bodies.length);
-        const fixed = new Array(bodies.length);
-        const masses = new Array(bodies.length);
-
-        for (let i = 0; i < bodies.length; i++) {
-            const body = bodies[i];
-            positionMatrix[i] = new Array(bodies.length);
-            velocities[i] = new Array(0, 0, 0);
-            positions[i] = new Array(0, 0, 0);
-            accelerations[i] = new Array(0, 0, 0);
-
-            for (let r = 0; r < bodies.length; r++) {
-                positionMatrix[i][r] = new Array(0, 0, 0);
-
-                const other = bodies[r];
-                for (let j = 0; j < 3; j++) {
-                    positionMatrix[i][r][j] =
-                        body.position[j] - other.position[j];
-                }
-            }
-
-            for (let j = 0; j < 3; j++) {
-                positions[i][j] = body.position[j];
-                velocities[i][j] = body.velocity[j];
-                accelerations[i][j] = body.acceleration[j];
-            }
-
-            masses[i] = body.mass;
+        // Copy the velocities into the position
+        for (let i = 0; i < 6; i++) {
+            result[i] = vector[6 + i];
         }
 
-        return {
-            positions,
-            positionMatrix,
-            velocities,
-            accelerations,
-        };
-    }
+        // Calculate newtons law
+        const unit = [
+            vector[3] - vector[0],
+            vector[4] - vector[1],
+            vector[5] - vector[2],
+        ];
 
-    private cloneState(state: State): State {
-        return {
-            positions: [...state.positions.map((p) => [...p])],
-            positionMatrix: [...state.positionMatrix.map((p) => [...p])],
-            velocities: [...state.velocities.map((p) => [...p])],
-            accelerations: [...state.accelerations.map((p) => [...p])],
-        };
-    }
-
-    private calculateVelocities(dt: number, state: State): State {
-        const result: State = {
-            positions: [...state.positions],
-            positionMatrix: [...state.positionMatrix],
-            velocities: [...state.velocities],
-            accelerations: [...state.accelerations],
-        };
-
-        const acceleration = new Array(state.velocities.length);
-
-        for (let i = 0; i < acceleration.length; i++) {
-            acceleration[i] = new Array(0, 0, 0);
-        }
-
-        for (let i = 0; i < state.positionMatrix.length; i++) {
-            const positions = state.positionMatrix[i];
-            if (acceleration[i][0] != 0) continue;
-
-            // Each j is another body
-            for (let k = 0; k < positions.length; k++) {
-                if (k === i) continue;
-
-                const r = Math.sqrt(
-                    positions[k]
-                        .map((p) => Math.pow(p, 2))
-                        .reduce((a, b) => a + b, 0)
-                );
-
-                const unit = [
-                    positions[k][0] / r,
-                    positions[k][1] / r,
-                    positions[k][2] / r,
-                ];
-
-                const r2 = Math.pow(r, 2);
-                for (let j = 0; j < 3; j++) {
-                    const F1 = ((-G * this.bodies[k].mass) / r2) * unit[j];
-                    acceleration[i][j] += F1;
-                }
-            }
-        }
-
-        // Recalculate the matrix position differential
-        // and update the other state variables
-        for (let i = 0; i < result.positionMatrix.length; i++) {
-            for (let j = 0; j < 3; j++) {
-                result.velocities[i][j] += acceleration[i][j] * dt;
-                result.positions[i][j] += result.velocities[i][j];
-                result.accelerations[i][j] = acceleration[i][j];
-            }
-        }
-
-        for (let i = 0; i < result.positionMatrix.length; i++) {
-            const self_position = result.positions[i];
-            for (let r = 0; r < state.positionMatrix.length; r++) {
-                result.positionMatrix[i][r] = new Array(0, 0, 0);
-                const other_position = result.positions[r];
-                for (let j = 0; j < 3; j++) {
-                    result.positionMatrix[i][r][j] =
-                        self_position[j] - other_position[j];
-                }
-            }
+        const mag = norm(unit);
+        for (let j = 0; j < 3; j++) {
+            const ddot = (G * unit[j]) / Math.pow(mag, 3);
+            result[6 + j] = mass[1] * ddot;
+            result[9 + j] = -mass[0] * ddot;
         }
 
         return result;
     }
 
-    /** Calculate each position change through time **/
-    project(duration: number, step: number) {
-        let solutions = [];
-        let state = this.createStateMatrix();
-
-        for (let t = 0; t < duration; t += step) {
-            state = this.calculateVelocities(step, state);
-            solutions.push(this.cloneState(state));
-        }
-        return solutions;
-    }
-
     /** For each body, compute its updated position based on the effects of physics */
     update(dt: number) {
         const bodies = this.enabled_bodies();
-        const matrix = this.createStateMatrix();
-        const next_state = this.calculateVelocities(dt, matrix);
+        const processed = {};
 
         for (let i = 0; i < bodies.length; i++) {
-            const target = bodies[i];
-            for (let j = 0; j < 3; j++) {
-                target.velocity[j] = next_state.velocities[i][j];
-                target.position[j] = next_state.positions[i][j];
-                target.acceleration[j] = next_state.accelerations[i][j];
+            for (let k = 0; k < bodies.length; k++) {
+                if (i === k) continue;
+                if (processed[`${k}_${i}`]) continue;
+                if (processed[`${i}_${k}`]) continue;
+                processed[`${i}_${k}`] = true;
+                processed[`${k}_${i}`] = true;
+
+                const state_vec = [
+                    ...bodies[i].position,
+                    ...bodies[k].position,
+                    ...bodies[i].velocity,
+                    ...bodies[k].velocity,
+                ] as StateVector;
+
+                const next_state = rk4iter(
+                    this.solve,
+                    [...state_vec],
+                    [bodies[i].mass, bodies[k].mass],
+                    dt
+                );
+
+                for (let j = 0; j < 3; j++) {
+                    bodies[i].position[j] = next_state[0 + j];
+                    bodies[k].position[j] = next_state[3 + j];
+                    bodies[i].velocity[j] = next_state[6 + j];
+                    bodies[k].velocity[j] = next_state[9 + j];
+                }
             }
         }
-
-        this.state = next_state;
     }
 }
 
@@ -288,4 +186,30 @@ export function keplerianParameters(
         h,
         e,
     };
+}
+
+function rk4iter(
+    fn: (state: StateVector, mass: [number, number]) => void,
+    state: number[],
+    mass: [number, number],
+    dt
+) {
+    const k1 = fn([...state], mass);
+    const k2 = fn(
+        [...state].map((y, idx) => y + k1[idx] * (dt / 2)),
+        mass
+    );
+    const k3 = fn(
+        [...state].map((y, idx) => y + k2[idx] * (dt / 2)),
+        mass
+    );
+    const k4 = fn(
+        [...state].map((y, idx) => y + k3[idx] * dt),
+        mass
+    );
+
+    // compute the y value at the end of the iteration
+    return [...state].map((y, idx) => {
+        return y + (k1[idx] + 2 * k2[idx] + 2 * k3[idx] + k4[idx]) * (dt / 6);
+    });
 }

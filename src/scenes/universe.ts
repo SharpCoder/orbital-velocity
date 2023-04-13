@@ -9,7 +9,7 @@ import { createContainer } from '../objects/container';
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
     position: [1500, 0, 0],
-    velocity: [10, 20, 30],
+    velocity: [0, 20, 40],
     mass: 1,
 });
 
@@ -19,15 +19,15 @@ const Sun = physicsEngine.addBody({
     mass: 1e26,
 });
 
-const Sun2 = physicsEngine.addBody({
-    position: [-2000, 0, 0],
-    velocity: [22, 0, -40],
-    mass: 2,
-});
+// const Sun2 = physicsEngine.addBody({
+//     position: [-2000, 0, 0],
+//     velocity: [22, 0, -40],
+//     mass: 2,
+// });
 
 const cubeSize = 60;
 const sunSize = 100;
-const dt = 1;
+const dt = 0.0125;
 const orbitThickness = 5;
 const segments = [];
 let initialY = 0;
@@ -48,9 +48,9 @@ export const UniverseScene = new Scene({
         engine.settings.fogColor = [1, 1, 1, 1];
         engine.settings.fogColor = [0.0, 0.0, 0.0, 1];
         const { camera } = UniverseScene;
-        camera.offset[2] = 0;
-        camera.rotation[0] = rads(33);
-        camera.rotation[1] = -rads(186);
+        camera.offset[0] = -500;
+        camera.rotation[0] = rads(-65);
+        camera.rotation[1] = -rads(180);
     },
     update: (time, engine) => {
         const { camera } = UniverseScene;
@@ -65,42 +65,6 @@ export const UniverseScene = new Scene({
         // Update the orbit
         if (elapsed > next) {
             drawEllipse();
-            const { orbitalPeriod, i } = keplerianParameters(
-                Satellite.position,
-                Satellite.velocity,
-                Satellite.mass + Sun.mass
-            );
-
-            period = orbitalPeriod;
-            next = elapsed + 1; //period * 0.25;
-            incl = i;
-
-            const next_solutions = physicsEngine.project(
-                Math.min(period + 1, 300),
-                dt
-            );
-            // engine.activeScene.removeObject(orbit);
-            // orbit.children.splice(0, orbit.children.length);
-
-            // const color = [255, 128, 0];
-
-            // for (let i = 0; i < next_solutions.length - 1; i++) {
-            //     let fromId = i;
-            //     let toId = i + 1;
-
-            //     const from = next_solutions[fromId].positions[0];
-            //     const to = next_solutions[toId].positions[0];
-            //     const next_segment = lineTo({
-            //         from: [...from],
-            //         to: [...to],
-            //         thickness: orbitThickness,
-            //         color,
-            //     });
-
-            //     orbit.children.push(next_segment);
-            // }
-
-            // UniverseScene.addObject(orbit);
         }
     },
     status: 'initializing',
