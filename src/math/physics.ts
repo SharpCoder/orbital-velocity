@@ -181,6 +181,8 @@ export class PhysicsEngine {
         const orbitalPeriod =
             2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * masses));
 
+        const XYZ = [0, 1, 2];
+
         const K = [0, 0, 1];
         const N_vec = m3.cross(K, h_vec);
         const N = Math.sqrt(
@@ -190,12 +192,12 @@ export class PhysicsEngine {
         );
 
         let Omega = Math.acos(N_vec[0] / N);
-        if (N[1] >= 0) {
+        if (N[XYZ[1]] >= 0) {
             Omega = 2 * Math.PI - Omega;
         }
 
         let omega = Math.acos(m3.dot(N_vec, e_vec) / (N * e));
-        if (e_vec[2] < 0) {
+        if (e_vec[XYZ[2]] < 0) {
             omega = 2 * Math.PI - omega;
         }
         return {
@@ -220,6 +222,7 @@ export class PhysicsEngine {
 
         for (let i = 0; i < bodies.length; i++) {
             if (bodies[i].fixed) continue;
+
             const target = bodies[i];
             const masses = [target.mass];
 

@@ -19,15 +19,15 @@ const Sun = physicsEngine.addBody({
 
 const Sun2 = physicsEngine.addBody({
     position: [1000, 0, 0],
-    velocity: [0, 25, 40],
-    mass: 1e2,
+    velocity: [0, 50, 30],
+    mass: 1e1,
 });
 
 window['sat'] = Satellite;
 
 const cubeSize = 60;
 const sunSize = 100;
-const dt = 0.25;
+const dt = 0.35;
 
 export const UniverseScene = new Scene({
     title: 'universe',

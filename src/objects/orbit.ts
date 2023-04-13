@@ -1,5 +1,17 @@
-import { type Scene, type Obj3d, m4, getAnglesFromMatrix } from 'webgl-engine';
-import { lineTo, type LineToProps } from '../drawing';
+import {
+    type Obj3d,
+    m4,
+    getAnglesFromMatrix,
+    zeros,
+    degs,
+    rads,
+} from 'webgl-engine';
+import {
+    drawCylinder,
+    lineTo,
+    lineToPositionAndRotation,
+    type LineToProps,
+} from '../drawing';
 import { EllipseCalculator } from '../math/ellipse';
 import type { PhysicsEngine, Body } from '../math/physics';
 import { createContainer } from './container';
@@ -14,13 +26,30 @@ export function drawOrbit(
         ...containerProps,
     });
 
+    // Create the segments
+    const segments: Obj3d[] = [];
+    const positions = EllipseCalculator.compute({
+        semiMajorAxis: 1,
+        semiMinorAxis: 1,
+    });
+
+    for (let i = 0; i < positions.length - 1; i++) {
+        const segment = lineTo({
+            from: zeros(),
+            to: zeros(),
+            sides: 4,
+            thickness: 5,
+            color: [255, 0, 0],
+            ...lineProps,
+        });
+
+        segments.push(segment);
+        orbit.children.push(segment);
+    }
+
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
         const scene = engine.activeScene;
-        scene.removeObject(orbit);
-        delete orbit.children;
-        orbit.children = [];
-
         const {
             e,
             center,
@@ -38,19 +67,28 @@ export function drawOrbit(
                 semiMinorAxis,
             });
 
-            for (let i = 0; i < positions.length - 1; i++) {
+            for (
+                let i = 0;
+                i < Math.min(segments.length, positions.length - 1);
+                i++
+            ) {
+                const segment = segments[i];
                 const from = [positions[i][0], 0, positions[i][1]];
                 const to = [positions[i + 1][0], 0, positions[i + 1][1]];
-                orbit.children.push(
-                    lineTo({
-                        from,
-                        to,
-                        sides: 4,
-                        thickness: 5,
-                        color: [255, 0, 0],
-                        ...lineProps,
-                    })
-                );
+                const cylinder = drawCylinder({
+                    ...lineToPositionAndRotation({ from, to }),
+                    sides: 4,
+                    thickness: 5,
+                    color: [255, 0, 0],
+                    ...lineProps,
+                });
+
+                segment.vertexes = cylinder.vertexes;
+                segment.rotation = cylinder.rotation;
+                segment.offsets = cylinder.offsets;
+                segment.colors = cylinder.colors;
+                segment.normals = cylinder.normals;
+                segment.position = cylinder.position;
             }
 
             // Rotate ourself
@@ -60,16 +98,22 @@ export function drawOrbit(
                 m4.rotateY(argumentOfPeriapsis),
             ]);
 
+            // TODO: idk if this is right
+            let fociX = -semiMajorAxis * e;
+            if (argumentOfPeriapsis < rads(90)) {
+                fociX += center[0];
+            } else {
+                fociX -= center[0];
+            }
+
+            // console.log(degs(argumentOfPeriapsis));
             const rotation = getAnglesFromMatrix(matrix);
             orbit.rotation = rotation;
-            orbit.offsets = [
-                -semiMajorAxis * e - center[0],
-                -center[1],
-                -center[2],
-            ];
+            orbit.offsets = [fociX, -center[1], -center[2]];
+        } else {
+            console.error('oops e is not within tolerance');
         }
 
-        scene.addObject(orbit);
         originalUpdate && originalUpdate.call(this, time_t, engine);
     };
 
