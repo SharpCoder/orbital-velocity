@@ -11,17 +11,13 @@ import {
 } from 'webgl-engine';
 
 export type CubProps = {
-    x: number;
-    y: number;
-    z: number;
+    position: number[];
     size: Vec3D;
     color?: Vec3D;
     colors?: number[];
 };
 export function drawCube({
-    x,
-    y,
-    z,
+    position,
     size,
     color,
     colors,
@@ -44,7 +40,7 @@ export function drawCube({
                       ]
             ),
         offsets: [-size[0] / 2, -size[1] / 2, -size[2] / 2],
-        position: [x, y, z],
+        position,
         rotation: zeros(),
         ...props,
     };

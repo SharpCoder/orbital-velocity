@@ -1,43 +1,77 @@
-import { sgp4, type SatRec } from 'satellite.js';
-import { type Obj3d, type Vec3D, Vec3 } from 'webgl-engine';
-import { lineTo } from '../drawing';
+import { type Scene, type Obj3d, m4, getAnglesFromMatrix } from 'webgl-engine';
+import { lineTo, type LineToProps } from '../drawing';
+import { EllipseCalculator } from '../math/ellipse';
+import type { PhysicsEngine, Body } from '../math/physics';
+import { createContainer } from './container';
 
 export function drawOrbit(
-    rec: SatRec,
-    originTime: number,
-    sizeScale: number,
-    orbitScalar: number
-): Obj3d[] {
-    const objects = [];
-    const inputs: Array<{ from: Vec3D; to: Vec3D }> = [];
+    physicsEngine: PhysicsEngine,
+    body: Body,
+    lineProps?: Partial<Omit<Omit<LineToProps, 'from'>, 'to'>>,
+    containerProps?: Partial<Obj3d>
+): Obj3d {
+    const orbit = createContainer({
+        ...containerProps,
+    });
 
-    let x = 0,
-        y = 0,
-        z = 0;
+    const originalUpdate = containerProps?.update;
+    orbit.update = function (time_t, engine) {
+        const scene = engine.activeScene;
+        scene.removeObject(orbit);
+        delete orbit.children;
+        orbit.children = [];
 
-    for (let i = 0; i < 100; i++) {
-        const { position } = sgp4(rec, originTime + i) as any;
-        if (i !== 0) {
-            inputs.push({
-                from: Vec3(x, y, z),
-                to: Vec3(
-                    position.x / orbitScalar,
-                    position.y / orbitScalar,
-                    position.z / orbitScalar
-                ),
+        const {
+            e,
+            center,
+            semiMajorAxis,
+            semiMinorAxis,
+            rightAscensionNode,
+            argumentOfPeriapsis,
+            i,
+        } = physicsEngine.keplerianParameters(body);
+
+        // TODO: Handle eccentricity > 1.0
+        if (e <= 1.0) {
+            const positions = EllipseCalculator.compute({
+                semiMajorAxis,
+                semiMinorAxis,
             });
+
+            for (let i = 0; i < positions.length - 1; i++) {
+                const from = [positions[i][0], 0, positions[i][1]];
+                const to = [positions[i + 1][0], 0, positions[i + 1][1]];
+                orbit.children.push(
+                    lineTo({
+                        from,
+                        to,
+                        sides: 4,
+                        thickness: 5,
+                        color: [255, 0, 0],
+                        ...lineProps,
+                    })
+                );
+            }
+
+            // Rotate ourself
+            const matrix = m4.combine([
+                m4.rotateY(rightAscensionNode),
+                m4.rotateX(i - Math.PI / 2),
+                m4.rotateY(argumentOfPeriapsis),
+            ]);
+
+            const rotation = getAnglesFromMatrix(matrix);
+            orbit.rotation = rotation;
+            orbit.offsets = [
+                -semiMajorAxis * e - center[0],
+                -center[1],
+                -center[2],
+            ];
         }
 
-        x = position.x / orbitScalar;
-        y = position.y / orbitScalar;
-        z = position.z / orbitScalar;
-    }
+        scene.addObject(orbit);
+        originalUpdate && originalUpdate.call(this, time_t, engine);
+    };
 
-    for (const point of inputs) {
-        const from = point.from.map((p) => p * sizeScale);
-        const to = point.to.map((p) => p * sizeScale);
-        objects.push(lineTo({ from, to, thickness: 0.8, color: [0, 0, 0] }));
-    }
-
-    return objects;
+    return orbit;
 }

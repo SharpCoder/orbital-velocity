@@ -33,15 +33,8 @@ document.addEventListener('wheel', (evt) => {
     zoom += evt.deltaY / 1;
 });
 
-export function useTouchCamera(engine: Engine, initialY: number) {
+export function useTouchCamera(engine: Engine) {
     const { camera } = engine.activeScene;
-
-    if (!init) {
-        init = true;
-        // camera.rotation[1] = initialY;
-        // camera.rotation[0] = rads(90 - 15);
-        // camera.position[0] = rads(90);
-    }
 
     switch (engine.mousebutton) {
         case 1: {
@@ -78,36 +71,5 @@ export function useTouchCamera(engine: Engine, initialY: number) {
         camera.rotation[1] = (wry + rads(deltaX / 3)) % rads(360);
     }
 
-    engine.debug(`${r(degs(camera.rotation[0]))} [rx]`);
-    engine.debug(`${r(degs(camera.rotation[1]))} [ry]`);
-    engine.debug(`${r(degs(camera.rotation[2]))} [rz]`);
-
-    // camera.rotation[1] = initialY;
     camera.offset[2] = zoom;
-    // camera.position[2] = zoom;
-}
-
-function getAnglesFromMatrix(mm: number[]) {
-    let thetaX = 0,
-        thetaY = 0,
-        thetaZ = 0;
-
-    function idx(row, col) {
-        return (col - 1) * 4 + row - 1;
-    }
-
-    thetaX = Math.asin(mm[idx(3, 2)]);
-    if (thetaX < Math.PI / 2) {
-        if (thetaX > -Math.PI / 2) {
-            thetaZ = Math.atan2(-mm[idx(1, 2)], mm[idx(2, 2)]);
-            thetaY = Math.atan2(-mm[idx(3, 1)], mm[idx(3, 3)]);
-        } else {
-            thetaZ = -Math.atan2(-mm[idx(1, 3)], mm[idx(1, 1)]);
-            thetaY = 0;
-        }
-    } else {
-        thetaZ = Math.atan2(mm[idx(1, 3)], mm[idx(1, 1)]);
-        thetaY = 0;
-    }
-    return [thetaX, thetaY, thetaZ];
 }

@@ -9,10 +9,10 @@ export class EllipseCalculator {
     static compute(parameters: EllipseParameters): Vec2D[] {
         const coordinates: Vec2D[] = [];
 
-        for (let i = 0; i < 361; i++) {
+        for (let i = 0; i < 361 / 3; i++) {
             coordinates.push([
-                parameters.semiMajorAxis * Math.cos(rads(i)),
-                parameters.semiMinorAxis * Math.sin(rads(i)),
+                parameters.semiMajorAxis * Math.cos(rads(i * 3)),
+                parameters.semiMinorAxis * Math.sin(rads(i * 3)),
             ]);
         }
 
