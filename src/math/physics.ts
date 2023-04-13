@@ -72,15 +72,10 @@ export class PhysicsEngine {
     /** For each body, compute its updated position based on the effects of physics */
     update(dt: number) {
         const bodies = this.enabled_bodies();
-        const processed = {};
 
         for (let i = 0; i < bodies.length; i++) {
             for (let k = 0; k < bodies.length; k++) {
                 if (i === k) continue;
-                if (processed[`${k}_${i}`]) continue;
-                if (processed[`${i}_${k}`]) continue;
-                processed[`${i}_${k}`] = true;
-                processed[`${k}_${i}`] = true;
 
                 const state_vec = [
                     ...bodies[i].position,
@@ -98,9 +93,7 @@ export class PhysicsEngine {
 
                 for (let j = 0; j < 3; j++) {
                     bodies[i].position[j] = next_state[0 + j];
-                    bodies[k].position[j] = next_state[3 + j];
                     bodies[i].velocity[j] = next_state[6 + j];
-                    bodies[k].velocity[j] = next_state[9 + j];
                 }
             }
         }

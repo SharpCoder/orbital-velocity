@@ -1,4 +1,13 @@
-import { Camera, DefaultShader, degs, m4, r, rads, Scene } from 'webgl-engine';
+import {
+    Camera,
+    DefaultShader,
+    degs,
+    getAnglesFromMatrix,
+    m4,
+    r,
+    rads,
+    Scene,
+} from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { drawCube, lineTo } from '../drawing';
 import { NaviCube } from '../objects/naviCube';
@@ -20,26 +29,19 @@ const Sun = physicsEngine.addBody({
 });
 
 // const Sun2 = physicsEngine.addBody({
-//     position: [-2000, 0, 0],
+//     position: [-1500, 0, 0],
 //     velocity: [22, 0, -40],
-//     mass: 2,
+//     mass: 0,
 // });
 
 const cubeSize = 60;
 const sunSize = 100;
-const dt = 0.0125;
+const dt = 0.05;
 const orbitThickness = 5;
 const segments = [];
 let initialY = 0;
-let next = 0;
-let elapsed = 0;
-let period = 0;
-let incl = 0;
 
-const orbit = createContainer();
 const ellipse = createContainer();
-let elapsedTime = 0;
-let nextUpdate = 0;
 
 export const UniverseScene = new Scene({
     title: 'universe',
@@ -53,19 +55,9 @@ export const UniverseScene = new Scene({
         camera.rotation[1] = -rads(180);
     },
     update: (time, engine) => {
-        const { camera } = UniverseScene;
         useTouchCamera(engine, initialY);
-        // camera.position = Satellite.position;
-
-        // if (elapsed > 0) return;
-
         physicsEngine.update(dt);
-        elapsed += dt;
-
-        // Update the orbit
-        if (elapsed > next) {
-            drawEllipse();
-        }
+        drawEllipse();
     },
     status: 'initializing',
 });
@@ -80,18 +72,18 @@ const Borg = drawCube({
     },
 });
 
-UniverseScene.addObject(
-    drawCube({
-        x: Sun.position[0],
-        y: Sun.position[1],
-        z: Sun.position[2],
-        size: [sunSize, sunSize, sunSize],
-        color: [255, 128, 0],
-        update: function (t, engine) {
-            this.position = Sun.position;
-        },
-    })
-);
+const TheSun = drawCube({
+    x: Sun.position[0],
+    y: Sun.position[1],
+    z: Sun.position[2],
+    size: [sunSize, sunSize, sunSize],
+    color: [255, 255, 255],
+    update: function (t, engine) {
+        this.position = Sun.position;
+    },
+});
+
+UniverseScene.addObject(TheSun);
 
 // UniverseScene.addObject(
 //     drawCube({
@@ -145,7 +137,7 @@ function drawEllipse() {
             to,
             sides: 10,
             thickness: orbitThickness,
-            color: [255, 255, 255],
+            color: [0, 128, 255],
         });
         ellipse.children.push(child);
     }
@@ -163,31 +155,6 @@ function drawEllipse() {
 
     ellipse.rotation = rotation;
     ellipse.offsets = [-semiMajorAxis * eccentricity, 0, 0];
-
+    Borg.rotation = ellipse.rotation;
     UniverseScene.addObject(ellipse);
-}
-
-function getAnglesFromMatrix(mm: number[]) {
-    let thetaX = 0,
-        thetaY = 0,
-        thetaZ = 0;
-
-    function idx(row, col) {
-        return (col - 1) * 4 + row - 1;
-    }
-
-    thetaX = Math.asin(mm[idx(3, 2)]);
-    if (thetaX < Math.PI / 2) {
-        if (thetaX > -Math.PI / 2) {
-            thetaZ = Math.atan2(-mm[idx(1, 2)], mm[idx(2, 2)]);
-            thetaY = Math.atan2(-mm[idx(3, 1)], mm[idx(3, 3)]);
-        } else {
-            thetaZ = -Math.atan2(-mm[idx(1, 3)], mm[idx(1, 1)]);
-            thetaY = 0;
-        }
-    } else {
-        thetaZ = Math.atan2(mm[idx(1, 3)], mm[idx(1, 1)]);
-        thetaY = 0;
-    }
-    return [thetaX, thetaY, thetaZ];
 }
