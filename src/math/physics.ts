@@ -44,26 +44,42 @@ export class PhysicsEngine {
         return this.bodies.filter((x) => x.disabled !== true);
     }
 
-    private solve(vector: StateVector, mass: [number, number]): StateVector {
+    private solve(vector: StateVector, mass: number[]): StateVector {
         const result: StateVector = [...vector];
 
         // Copy the velocities into the position
-        for (let i = 0; i < 6; i++) {
-            result[i] = vector[6 + i];
+        const midpoint = vector.length / 2;
+        const bodies = midpoint / 3;
+        const accel = new Array(bodies);
+        accel[0] = [0, 0, 0];
+
+        for (let i = 0; i < midpoint; i++) {
+            result[i] = vector[midpoint + i];
         }
 
-        // Calculate newtons law
-        const unit = [
-            vector[3] - vector[0],
-            vector[4] - vector[1],
-            vector[5] - vector[2],
-        ];
+        for (let i = 1; i < bodies; i++) {
+            accel[i] = [0, 0, 0];
 
-        const mag = norm(unit);
-        for (let j = 0; j < 3; j++) {
-            const ddot = (G * unit[j]) / Math.pow(mag, 3);
-            result[6 + j] = mass[1] * ddot;
-            result[9 + j] = -mass[0] * ddot;
+            // Calculate newtons law
+            const other = i * 3;
+            const unit = [
+                vector[other + 0] - vector[0],
+                vector[other + 1] - vector[1],
+                vector[other + 2] - vector[2],
+            ];
+
+            const mag = norm(unit);
+            for (let j = 0; j < 3; j++) {
+                const ddot = (G * unit[j]) / Math.pow(mag, 3);
+                accel[0][j] += mass[i] * ddot;
+                accel[i][j] -= mass[0] * ddot;
+            }
+        }
+
+        for (let i = 0; i < bodies; i++) {
+            for (let j = 0; j < 3; j++) {
+                result[midpoint + i * 3 + j] = accel[i][j];
+            }
         }
 
         return result;
@@ -74,27 +90,30 @@ export class PhysicsEngine {
         const bodies = this.enabled_bodies();
 
         for (let i = 0; i < bodies.length; i++) {
+            const target = bodies[i];
+            const masses = [target.mass];
+
+            let state_vec = [...bodies[i].position];
+
             for (let k = 0; k < bodies.length; k++) {
-                if (i === k) continue;
+                if (k === i) continue;
+                masses.push(bodies[k].mass);
+                state_vec = [...state_vec, ...bodies[k].position];
+            }
 
-                const state_vec = [
-                    ...bodies[i].position,
-                    ...bodies[k].position,
-                    ...bodies[i].velocity,
-                    ...bodies[k].velocity,
-                ] as StateVector;
+            state_vec = [...state_vec, ...bodies[i].velocity];
 
-                const next_state = rk4iter(
-                    this.solve,
-                    [...state_vec],
-                    [bodies[i].mass, bodies[k].mass],
-                    dt
-                );
+            for (let k = 0; k < bodies.length; k++) {
+                if (k === i) continue;
+                state_vec = [...state_vec, ...bodies[k].velocity];
+            }
 
-                for (let j = 0; j < 3; j++) {
-                    bodies[i].position[j] = next_state[0 + j];
-                    bodies[i].velocity[j] = next_state[6 + j];
-                }
+            const next_state = rk4iter(this.solve, [...state_vec], masses, dt);
+            const midpoint = next_state.length / 2;
+
+            for (let j = 0; j < 3; j++) {
+                bodies[i].position[j] = next_state[0 + j];
+                bodies[i].velocity[j] = next_state[midpoint + j];
             }
         }
     }
@@ -182,9 +201,9 @@ export function keplerianParameters(
 }
 
 function rk4iter(
-    fn: (state: StateVector, mass: [number, number]) => void,
+    fn: (state: StateVector, mass: number[]) => void,
     state: number[],
-    mass: [number, number],
+    mass: number[],
     dt
 ) {
     const k1 = fn([...state], mass);

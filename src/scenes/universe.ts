@@ -31,12 +31,12 @@ const Sun = physicsEngine.addBody({
 // const Sun2 = physicsEngine.addBody({
 //     position: [-1500, 0, 0],
 //     velocity: [22, 0, -40],
-//     mass: 0,
+//     mass: 1,
 // });
 
 const cubeSize = 60;
 const sunSize = 100;
-const dt = 0.05;
+const dt = 0.25;
 const orbitThickness = 5;
 const segments = [];
 let initialY = 0;
