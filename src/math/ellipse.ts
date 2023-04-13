@@ -1,12 +1,12 @@
 import { rads, type Vec2D, type Vec2DArray } from 'webgl-engine';
 
-export type OrbitalParameters = {
+export type EllipseParameters = {
     semiMajorAxis: number; // a
     semiMinorAxis: number; // b
 };
 
-export class Propagator {
-    propagate(parameters: OrbitalParameters): Vec2D[] {
+export class EllipseCalculator {
+    static compute(parameters: EllipseParameters): Vec2D[] {
         const coordinates: Vec2D[] = [];
 
         for (let i = 0; i < 361; i++) {

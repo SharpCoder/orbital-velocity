@@ -1,38 +1,36 @@
 import {
-    Camera,
     DefaultShader,
-    degs,
     getAnglesFromMatrix,
     m4,
-    r,
     rads,
     Scene,
 } from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { drawCube, lineTo } from '../drawing';
-import { NaviCube } from '../objects/naviCube';
-import { keplerianParameters, PhysicsEngine } from '../math/physics';
-import { Propagator } from '../math/propagator';
+import { PhysicsEngine } from '../math/physics';
+import { EllipseCalculator } from '../math/ellipse';
 import { createContainer } from '../objects/container';
 
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
-    position: [1500, 0, 0],
+    position: [500, 0, 0],
     velocity: [0, 20, 40],
     mass: 1,
 });
 
 const Sun = physicsEngine.addBody({
-    position: [0, 0, 0],
+    position: [-500, 0, 0],
     velocity: [0, 0, 0],
     mass: 1e26,
 });
 
-// const Sun2 = physicsEngine.addBody({
-//     position: [-1500, 0, 0],
-//     velocity: [22, 0, -40],
-//     mass: 1,
-// });
+const Sun2 = physicsEngine.addBody({
+    position: [1000, 0, 0],
+    velocity: [0, 25, 40],
+    mass: 1e2,
+});
+
+window['sat'] = Satellite;
 
 const cubeSize = 60;
 const sunSize = 100;
@@ -55,6 +53,10 @@ export const UniverseScene = new Scene({
         camera.rotation[1] = -rads(180);
     },
     update: (time, engine) => {
+        const { camera } = engine.activeScene;
+
+        camera.position = Sun.position;
+
         useTouchCamera(engine, initialY);
         physicsEngine.update(dt);
         drawEllipse();
@@ -85,23 +87,21 @@ const TheSun = drawCube({
 
 UniverseScene.addObject(TheSun);
 
-// UniverseScene.addObject(
-//     drawCube({
-//         x: Sun2.position[0],
-//         y: Sun2.position[1],
-//         z: Sun2.position[2],
-//         size: [cubeSize, cubeSize, cubeSize],
-//         update: function (t, engine) {
-//             this.position = Sun2.position;
-//         },
-//     })
-// );
+UniverseScene.addObject(
+    drawCube({
+        x: Sun2.position[0],
+        y: Sun2.position[1],
+        z: Sun2.position[2],
+        size: [cubeSize, cubeSize, cubeSize],
+        update: function (t, engine) {
+            this.position = Sun2.position;
+        },
+    })
+);
 
 UniverseScene.addObject(Borg);
 segments.forEach((segment) => UniverseScene.addObject(segment));
-UniverseScene.addObject(NaviCube());
 
-const propagator = new Propagator();
 function drawEllipse() {
     UniverseScene.removeObject(ellipse);
 
@@ -109,12 +109,9 @@ function drawEllipse() {
     ellipse.children.splice(0, ellipse.children.length);
 
     // Create new children
-    const parameters = keplerianParameters(
-        Satellite.position,
-        Satellite.velocity,
-        Sun.mass + Satellite.mass
-    );
+    const parameters = physicsEngine.keplerianParameters(Satellite);
 
+    const origin = parameters.center;
     const semiMajorAxis = parameters.semiMajorAxis;
     const semiMinorAxis = parameters.semiMinorAxis;
     const rightAscensionNode = parameters.rightAscensionNode;
@@ -124,7 +121,7 @@ function drawEllipse() {
 
     if (eccentricity > 1.0) return;
 
-    const positions = propagator.propagate({
+    const positions = EllipseCalculator.compute({
         semiMajorAxis: semiMajorAxis,
         semiMinorAxis: semiMinorAxis,
     });
@@ -154,7 +151,12 @@ function drawEllipse() {
     const rotation = getAnglesFromMatrix(matrix);
 
     ellipse.rotation = rotation;
-    ellipse.offsets = [-semiMajorAxis * eccentricity, 0, 0];
+    // ellipse.offsets = origin;
+    ellipse.offsets = [
+        -semiMajorAxis * eccentricity - origin[0],
+        -origin[1],
+        -origin[2],
+    ];
     Borg.rotation = ellipse.rotation;
     UniverseScene.addObject(ellipse);
 }
