@@ -16,7 +16,7 @@ const depthVertexShader = `
         gl_Position = u_projection * u_camera_inverse * u_worldView * a_position;
         vec4 position = a_position * u_camera;
 
-        v_color = vec4(0, position.x / u_width, position.z / u_height, 1);
+        v_color = vec4(0, position.x / u_height, position.z / u_width, 1);
     }
 `;
 
@@ -46,7 +46,7 @@ export const DepthShader: ProgramTemplate = {
         const pixelX = (mx * gl.canvas.width) / gl.canvas.clientWidth;
         const pixelY =
             gl.canvas.height -
-            (engine.mousey * gl.canvas.height) / gl.canvas.clientHeight -
+            (my * gl.canvas.height) / gl.canvas.clientHeight -
             1;
 
         gl.readPixels(
@@ -59,15 +59,11 @@ export const DepthShader: ProgramTemplate = {
             data
         ); // typed array to hold result
 
-        const cross = data[1] / 200;
-        const depth = data[2] / 200;
+        const x = data[1] / 255;
+        const z = data[2] / 255;
 
-        engine.properties['mouse_x'] = cross;
-        engine.properties['mouse_z'] = depth;
-
-        engine.debug(`${cross} [cross]`);
-        engine.debug(`${depth} [depth]`);
-        engine.debug(data.join(', '));
+        engine.properties['mouse_x'] = x;
+        engine.properties['mouse_z'] = z;
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
@@ -128,11 +124,13 @@ export const DepthShader: ProgramTemplate = {
         },
         u_width: (engine, loc, obj) => {
             const { gl } = engine;
-            gl.uniform1f(loc, Math.abs(obj._bbox.d * 2));
+            const max = obj._bbox.d * 2;
+            gl.uniform1f(loc, Math.abs(max));
         },
         u_height: (engine, loc, obj) => {
             const { gl } = engine;
-            gl.uniform1f(loc, Math.abs(obj._bbox.w * 2));
+            const max = obj._bbox.w * 2;
+            gl.uniform1f(loc, Math.abs(max));
         },
     },
 };

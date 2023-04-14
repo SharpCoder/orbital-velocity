@@ -29,24 +29,6 @@ export function drawOrbit(
         ...containerProps,
     });
 
-    const mouseBoxSize = 50;
-    const mouseBox = drawCube({
-        position: zeros(),
-        size: [mouseBoxSize, mouseBoxSize, mouseBoxSize],
-    });
-
-    const orbitalPlane = drawCube({
-        properties: {
-            plane: true,
-        },
-        position: zeros(),
-        size: [1, 1, 1],
-        transparent: true,
-    });
-
-    orbit.children.push(orbitalPlane);
-    orbit.children.push(mouseBox);
-
     // Create the segments
     const segments: Obj3d[] = [];
     const positions = EllipseCalculator.compute({
@@ -70,7 +52,6 @@ export function drawOrbit(
 
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
-        const { camera } = engine.activeScene;
         const {
             e,
             center,
@@ -130,38 +111,6 @@ export function drawOrbit(
             const rotation = getAnglesFromMatrix(matrix);
             orbit.rotation = rotation;
             orbit.offsets = [fociX, -center[1], -center[2]];
-
-            /**
-             * Orbital alignment
-             */
-            const planeExtender = 1.25;
-            const cross = (engine.properties['mouse_x'] ?? 0) / planeExtender;
-            const depth = (engine.properties['mouse_z'] ?? 0) / planeExtender;
-
-            const skewX =
-                Math.abs(fociX) >= 1
-                    ? (255 * (1.0 - e)) / (-center[0] - fociX)
-                    : 1.0;
-            const skewY =
-                Math.abs(center[2]) >= 1 ? (255 * (1.0 - e)) / center[2] : 1.0;
-
-            engine.debug(`${skewY} [skewY]`);
-            const y = semiMajorAxis * (0.5 * skewY - depth);
-            const x =
-                semiMinorAxis * (cross - 0.5 * skewX) - (-center[0] - fociX);
-            const mouseAngle = Math.atan2(y, x);
-
-            mouseBox.position = [
-                semiMajorAxis * Math.cos(mouseAngle),
-                0,
-                semiMinorAxis * Math.sin(mouseAngle),
-            ];
-
-            // Render the orbital plane
-            const w = semiMajorAxis * 2 * planeExtender;
-            const h = semiMinorAxis * 2 * planeExtender;
-            orbitalPlane.vertexes = cuboid(w, 1, h);
-            orbitalPlane.offsets = [-w / 2, 0.5, -h / 2];
         } else {
             console.error('oops e is not within tolerance');
         }

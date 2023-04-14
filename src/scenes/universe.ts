@@ -11,11 +11,12 @@ import {
 } from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { PhysicsEngine } from '../math/physics';
+import { drawManeuverNode } from '../objects/maneuverNode';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 
-const offset = 10000;
-const offsetY = 1000;
+const offset = 0;
+const offsetY = 0;
 
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
@@ -32,7 +33,7 @@ const Sun = physicsEngine.addBody({
 
 const Sun2 = physicsEngine.addBody({
     position: [1000 - offset, 0, 0],
-    velocity: [0, 50, 30],
+    velocity: [0, 20, 30],
     mass: 1e1,
 });
 
@@ -46,7 +47,7 @@ export const UniverseScene = new Scene({
         engine.settings.fogColor = [1, 1, 1, 1];
         engine.settings.fogColor = [0, 0, 0, 1];
         const { camera } = UniverseScene;
-        camera.rotation[0] = rads(-65);
+        camera.rotation[0] = -rads(180 + 45);
         camera.rotation[1] = -rads(180);
     },
     update: (time, engine) => {
@@ -132,8 +133,16 @@ fetch('models/ball.obj')
 //     })
 // );
 
-UniverseScene.addObject(
-    drawOrbit(physicsEngine, Sun2, {
+const orbitalManeuverNode = drawManeuverNode(physicsEngine, Sun2, 1.2);
+const orbit = drawOrbit(
+    physicsEngine,
+    Sun2,
+    {
         color: [128, 64, 255],
-    })
+    },
+    {
+        children: [orbitalManeuverNode],
+    }
 );
+
+UniverseScene.addObject(orbit);
