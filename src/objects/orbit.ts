@@ -5,8 +5,11 @@ import {
     zeros,
     degs,
     rads,
+    r,
+    cuboid,
 } from 'webgl-engine';
 import {
+    drawCube,
     drawCylinder,
     lineTo,
     lineToPositionAndRotation,
@@ -25,6 +28,24 @@ export function drawOrbit(
     const orbit = createContainer({
         ...containerProps,
     });
+
+    const mouseBoxSize = 25;
+    const mouseBox = drawCube({
+        position: zeros(),
+        size: [mouseBoxSize, mouseBoxSize, mouseBoxSize],
+    });
+
+    const orbitalPlane = drawCube({
+        properties: {
+            plane: true,
+        },
+        position: zeros(),
+        size: [1, 1, 1],
+        transparent: true,
+    });
+
+    orbit.children.push(orbitalPlane);
+    orbit.children.push(mouseBox);
 
     // Create the segments
     const segments: Obj3d[] = [];
@@ -49,7 +70,7 @@ export function drawOrbit(
 
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
-        const scene = engine.activeScene;
+        const { camera } = engine.activeScene;
         const {
             e,
             center,
@@ -106,10 +127,34 @@ export function drawOrbit(
                 fociX -= center[0];
             }
 
-            // console.log(degs(argumentOfPeriapsis));
             const rotation = getAnglesFromMatrix(matrix);
             orbit.rotation = rotation;
             orbit.offsets = [fociX, -center[1], -center[2]];
+
+            const cross = engine.properties['cross'] ?? 0;
+            const depth = engine.properties['depth'] ?? 0;
+
+            const factorX = 210 / fociX;
+            const factorY = 1.0; //200 / center[2];
+
+            const yy = semiMajorAxis * (0.5 * factorY - depth);
+            const xx = semiMinorAxis * (cross - 0.5 * factorX);
+            const angle = Math.atan2(yy, xx);
+
+            mouseBox.position = [
+                semiMajorAxis * Math.cos(angle),
+                0,
+                semiMinorAxis * Math.sin(angle),
+            ];
+
+            // Render the orbital plane
+            const w = semiMajorAxis * 2 * 1.5;
+            const h = semiMinorAxis * 2 * 1.5;
+            orbitalPlane.vertexes = cuboid(w, 1, h);
+            orbitalPlane.offsets = [-w / 2, 0.5, -h / 2];
+            // orbitalPlane.rotation = rotation;
+
+            // engine.debug(`${r(degs(angle))}`);
         } else {
             console.error('oops e is not within tolerance');
         }

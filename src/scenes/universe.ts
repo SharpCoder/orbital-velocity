@@ -10,9 +10,9 @@ import {
     type Obj3d,
 } from 'webgl-engine';
 import { useTouchCamera } from '../logic/useTouchCamera';
-import { drawCube } from '../drawing';
 import { PhysicsEngine } from '../math/physics';
 import { drawOrbit } from '../objects/orbit';
+import { DepthShader } from '../shaders/depth';
 
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
@@ -36,11 +36,11 @@ const Sun2 = physicsEngine.addBody({
 window['sat'] = Satellite;
 
 const cubeSize = 25;
-const dt = 0.35;
+const dt = 0.05;
 
 export const UniverseScene = new Scene({
     title: 'universe',
-    shaders: [DefaultShader],
+    shaders: [DefaultShader, DepthShader],
     init: (engine) => {
         engine.settings.fogColor = [1, 1, 1, 1];
         engine.settings.fogColor = [0, 0, 0, 1];
@@ -76,7 +76,7 @@ fetch('models/ball.obj')
             return p / size;
         });
 
-        const scale = 80;
+        const scale = 50;
         const TheSun: Obj3d = {
             vertexes: vertexes,
             position: Sun.position,
@@ -94,20 +94,20 @@ fetch('models/ball.obj')
 
         UniverseScene.addObject(TheSun);
 
-        UniverseScene.addObject({
-            ...obj,
-            position: zeros(),
-            offsets: zeros(),
-            rotation: zeros(),
-            scale: [cubeSize, cubeSize, cubeSize],
-            colors: Flatten(
-                Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
-            ),
-            update: function (t, engine) {
-                this.position = Satellite.position;
-                this.offsets = [-cubeSize / 2, -cubeSize / 2, -cubeSize / 2];
-            },
-        });
+        // UniverseScene.addObject({
+        //     ...obj,
+        //     position: zeros(),
+        //     offsets: zeros(),
+        //     rotation: zeros(),
+        //     scale: [cubeSize, cubeSize, cubeSize],
+        //     colors: Flatten(
+        //         Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
+        //     ),
+        //     update: function (t, engine) {
+        //         this.position = Satellite.position;
+        //         this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
+        //     },
+        // });
 
         UniverseScene.addObject({
             ...obj,
@@ -120,16 +120,16 @@ fetch('models/ball.obj')
             ),
             update: function (t, engine) {
                 this.position = Sun2.position;
-                this.offsets = [-cubeSize / 2, -cubeSize / 2, -cubeSize / 2];
+                this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
             },
         });
     });
 
-UniverseScene.addObject(
-    drawOrbit(physicsEngine, Satellite, {
-        color: [0, 128, 255],
-    })
-);
+// UniverseScene.addObject(
+//     drawOrbit(physicsEngine, Satellite, {
+//         color: [0, 128, 255],
+//     })
+// );
 
 UniverseScene.addObject(
     drawOrbit(physicsEngine, Sun2, {

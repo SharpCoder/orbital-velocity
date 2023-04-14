@@ -24,17 +24,33 @@ let rx = 0, // rotateX
     init = false,
     mode: CameraMode = 'initializing';
 
-document.addEventListener('mousedown', (evt) => {
-    sx = evt.clientX;
-    sy = evt.clientY;
-});
-
-document.addEventListener('wheel', (evt) => {
-    zoom += evt.deltaY / 1;
-});
-
 export function useTouchCamera(engine: Engine) {
     const { camera } = engine.activeScene;
+
+    if (!init) {
+        init = true;
+        document.addEventListener('keydown', () => {
+            if (engine.keymap['Control'] || engine.keymap['Shift']) {
+                sx = engine.mousex;
+                sy = engine.mousey;
+            }
+        });
+
+        document.addEventListener('mousedown', () => {
+            sx = engine.mousex;
+            sy = engine.mousey;
+        });
+
+        document.addEventListener('wheel', (evt) => {
+            zoom += evt.deltaY / 1;
+        });
+    }
+
+    if (engine.keymap['Control']) {
+        engine.mousebutton = 4;
+    } else if (engine.keymap['Shift']) {
+        engine.mousebutton = 1;
+    }
 
     switch (engine.mousebutton) {
         case 1: {
