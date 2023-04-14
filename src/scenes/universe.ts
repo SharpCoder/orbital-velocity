@@ -14,26 +14,27 @@ import { PhysicsEngine } from '../math/physics';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 
+const offset = 10000;
+const offsetY = 1000;
+
 const physicsEngine = new PhysicsEngine();
 const Satellite = physicsEngine.addBody({
-    position: [500, 0, 0],
+    position: [500 - offset, 0, 0],
     velocity: [0, 20, 40],
     mass: 1,
 });
 
 const Sun = physicsEngine.addBody({
-    position: [-500, 0, 0],
+    position: [-500 - offset, 0, 0],
     velocity: [0, 0, 0],
     mass: 1e26,
 });
 
 const Sun2 = physicsEngine.addBody({
-    position: [1000, 0, 0],
+    position: [1000 - offset, 0, 0],
     velocity: [0, 50, 30],
     mass: 1e1,
 });
-
-window['sat'] = Satellite;
 
 const cubeSize = 25;
 const dt = 0.05;
