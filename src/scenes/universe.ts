@@ -14,6 +14,7 @@ import { PhysicsEngine } from '../math/physics';
 import { drawManeuverNode } from '../objects/maneuverNode';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
+import { StarboxShader } from '../shaders/starbox';
 
 const offset = 0;
 const offsetY = 0;
@@ -42,7 +43,7 @@ const dt = 0.05;
 
 export const UniverseScene = new Scene({
     title: 'universe',
-    shaders: [DefaultShader, DepthShader],
+    shaders: [DefaultShader, DepthShader, StarboxShader],
     init: (engine) => {
         engine.settings.fogColor = [1, 1, 1, 1];
         engine.settings.fogColor = [0, 0, 0, 1];
