@@ -2,6 +2,7 @@ import {
     DefaultShader,
     Flatten,
     loadModel,
+    r,
     rads,
     Repeat,
     Scene,
@@ -20,11 +21,6 @@ const offset = 0;
 const offsetY = 0;
 
 const physicsEngine = new PhysicsEngine();
-const Satellite = physicsEngine.addBody({
-    position: [500 - offset, 0, 0],
-    velocity: [0, 20, 40],
-    mass: 1,
-});
 
 const Sun = physicsEngine.addBody({
     position: [-500 - offset, 0, 0],
@@ -32,7 +28,7 @@ const Sun = physicsEngine.addBody({
     mass: 1e26,
 });
 
-const Sun2 = physicsEngine.addBody({
+const Satellite = physicsEngine.addBody({
     position: [1000 - offset, 0, 0],
     velocity: [0, 20, 30],
     mass: 1e1,
@@ -53,11 +49,12 @@ export const UniverseScene = new Scene({
     },
     update: (time, engine) => {
         const { camera } = engine.activeScene;
-
         camera.position = Sun.position;
-
         useTouchCamera(engine);
-        physicsEngine.update(dt);
+
+        if (engine.properties['freeze_physics'] !== true) {
+            physicsEngine.update(dt);
+        }
     },
     status: 'initializing',
 });
@@ -97,21 +94,6 @@ fetch('models/ball.obj')
 
         UniverseScene.addObject(TheSun);
 
-        // UniverseScene.addObject({
-        //     ...obj,
-        //     position: zeros(),
-        //     offsets: zeros(),
-        //     rotation: zeros(),
-        //     scale: [cubeSize, cubeSize, cubeSize],
-        //     colors: Flatten(
-        //         Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
-        //     ),
-        //     update: function (t, engine) {
-        //         this.position = Satellite.position;
-        //         this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
-        //     },
-        // });
-
         UniverseScene.addObject({
             ...obj,
             position: zeros(),
@@ -122,22 +104,27 @@ fetch('models/ball.obj')
                 Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
             ),
             update: function (t, engine) {
-                this.position = Sun2.position;
+                this.position = Satellite.position;
                 this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
+
+                const readoutLines = [
+                    `Position: <${r(Satellite.position[0])}, ${r(
+                        Satellite.position[1]
+                    )}, ${r(Satellite.position[2])}>`,
+                    `Velocity: <${r(Satellite.velocity[0])}, ${r(
+                        Satellite.velocity[1]
+                    )}, ${r(Satellite.velocity[2])}>`,
+                ];
+
+                engine.properties['readout'] = readoutLines.join('\n');
             },
         });
     });
 
-// UniverseScene.addObject(
-//     drawOrbit(physicsEngine, Satellite, {
-//         color: [0, 128, 255],
-//     })
-// );
-
-const orbitalManeuverNode = drawManeuverNode(physicsEngine, Sun2, 1.2);
+const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.2);
 const orbit = drawOrbit(
     physicsEngine,
-    Sun2,
+    Satellite,
     {
         color: [128, 64, 255],
     },

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
+    import Hud from './components/Hud.svelte';
 
     let xpos = 0;
     let ypos = 0;
@@ -52,6 +53,7 @@
 
 <div id="debug" bind:this={debugEl} />
 <canvas id="canvas" bind:this={webglCanvas} />
+<Hud />
 
 <style>
     #canvas {

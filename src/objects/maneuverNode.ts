@@ -64,11 +64,6 @@ export function drawManeuverNode(
         const normalizedCubeX = maneuverCube.position[0] - orbitalX;
         const normalizedCubeZ = maneuverCube.position[2] - orbitalZ;
 
-        engine.debug(`${r(normalizedCubeX)} [ncx]`);
-        engine.debug(`${r(normalizedCubeZ)} [ncz]`);
-        engine.debug(`${r(x * 2)} [x]`);
-        engine.debug(`${r(y * 2)} [y]`);
-
         // Compute the distance
         const dist = Math.sqrt(
             Math.pow(normalizedCubeX - x * 2, 2) +
