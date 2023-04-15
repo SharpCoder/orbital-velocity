@@ -12,7 +12,7 @@ export function drawManeuverNode(
     const container = createContainer(containerProps);
 
     // Create the plane
-    const maneuverCubeSize = 50;
+    const maneuverCubeSize = 20;
     const maneuverCube = drawCube({
         position: zeros(),
         size: [maneuverCubeSize, maneuverCubeSize, maneuverCubeSize],
@@ -70,10 +70,12 @@ export function drawManeuverNode(
                 Math.pow(normalizedCubeZ - y * 2, 2)
         );
 
-        if (dist > 300) {
+        if (dist > 200) {
             maneuverCube.transparent = true;
+            container.transparent = true;
         } else {
             maneuverCube.transparent = false;
+            container.transparent = false;
         }
 
         originalUpdate && originalUpdate.call(this, time_t, engine);

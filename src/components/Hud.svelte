@@ -1,7 +1,9 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
-    const engine = window['gameEngine'] as Engine;
+    import type { EngineHud } from '../types';
+
+    const engine = window['gameEngine'] as Engine<EngineHud>;
     let readoutEl;
     let timeText = 'Freeze';
     let readout = '';
@@ -18,10 +20,10 @@
         console.log(engine);
         if (engine) {
             if (timeText === 'Freeze') {
-                engine.properties['freeze_physics'] = true;
+                engine.properties.freezePhysics = true;
                 timeText = 'Resume';
             } else {
-                engine.properties['freeze_physics'] = false;
+                engine.properties.freezePhysics = false;
                 timeText = 'Freeze';
             }
         }

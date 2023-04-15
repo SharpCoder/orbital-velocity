@@ -1,5 +1,6 @@
 import {
     DefaultShader,
+    Engine,
     Flatten,
     loadModel,
     r,
@@ -17,6 +18,7 @@ import { drawManeuverNode } from '../objects/maneuverNode';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
+import type { EngineHud } from '../types';
 
 const offset = 0;
 const offsetY = 0;
@@ -40,10 +42,21 @@ const Planet = physicsEngine.addBody({
     mass: 1e26,
 });
 
-const cubeSize = 25;
-const dt = 0.05;
+const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
+const orbit = drawOrbit(
+    physicsEngine,
+    Satellite,
+    {
+        color: sage,
+    },
+    {
+        children: [orbitalManeuverNode],
+    }
+);
 
-export const UniverseScene = new Scene({
+const cubeSize = 25;
+
+export const UniverseScene = new Scene<EngineHud>({
     title: 'universe',
     shaders: [DefaultShader, DepthShader, StarboxShader],
     init: (engine) => {
@@ -52,14 +65,20 @@ export const UniverseScene = new Scene({
         const { camera } = UniverseScene;
         camera.rotation[0] = -rads(180 + 45);
         camera.rotation[1] = -rads(180);
+        camera.position = [...Sun.position];
     },
     update: (time, engine) => {
         const { camera } = engine.activeScene;
-        camera.position = Sun.position;
         useTouchCamera(engine);
 
-        if (engine.properties['freeze_physics'] !== true) {
-            physicsEngine.update(dt);
+        if (engine.properties.freezePhysics !== true) {
+            physicsEngine.update(0.02);
+        }
+    },
+    onMouseUp: (engine) => {
+        const { mouseClickDuration } = engine;
+        if (mouseClickDuration < 180 && !orbitalManeuverNode.transparent) {
+            alert('hello');
         }
     },
     status: 'initializing',
@@ -145,17 +164,5 @@ fetch('models/ball.obj')
             },
         });
     });
-
-const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
-const orbit = drawOrbit(
-    physicsEngine,
-    Satellite,
-    {
-        color: sage,
-    },
-    {
-        children: [orbitalManeuverNode],
-    }
-);
 
 UniverseScene.addObject(orbit);

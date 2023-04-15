@@ -2,13 +2,7 @@
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
     import Hud from './components/Hud.svelte';
-
-    let xpos = 0;
-    let ypos = 0;
-    let zpos = 8;
-    let xrot = 0;
-    let yrot = 0;
-    let zrot = 0;
+    import type { EngineHud } from './types';
 
     let debugEl: HTMLDivElement;
     let webglCanvas: HTMLCanvasElement;
@@ -16,7 +10,7 @@
     let timerId;
 
     onMount(() => {
-        const engine = window['gameEngine'] as Engine;
+        const engine = window['gameEngine'] as Engine<EngineHud>;
 
         if (timerId) {
             clearInterval(timerId);
@@ -30,15 +24,7 @@
     });
 
     $: {
-        const engine: Engine = window['gameEngine'];
-        engine.properties = {
-            xpos,
-            ypos,
-            zpos,
-            xrot,
-            yrot,
-            zrot,
-        };
+        const engine: Engine<EngineHud> = window['gameEngine'];
 
         if (webglCanvas) {
             if (!initialized) {

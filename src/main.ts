@@ -2,8 +2,9 @@ import './app.css';
 import App from './App.svelte';
 import { Engine } from 'webgl-engine';
 import { UniverseScene } from './scenes/universe';
+import type { EngineHud } from './types';
 
-let engine = new Engine();
+let engine = new Engine<EngineHud>();
 window['gameEngine'] = engine;
 engine.settings.zFar = 150000;
 
