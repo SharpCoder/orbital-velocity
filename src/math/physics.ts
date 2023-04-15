@@ -125,95 +125,7 @@ export class PhysicsEngine {
         const masses = body.mass + other.mass;
         const center = other.position;
 
-        // TODO: this fails when there are multiple large
-        // objects around.
-        for (let j = 0; j < 3; j++) {
-            position[j] -= center[j];
-        }
-
-        const mu = G * masses;
-        const r = Math.sqrt(
-            Math.pow(position[0], 2) +
-                Math.pow(position[1], 2) +
-                Math.pow(position[2], 2)
-        );
-        const v = Math.sqrt(
-            Math.pow(velocity[0], 2) +
-                Math.pow(velocity[1], 2) +
-                Math.pow(velocity[2], 2)
-        );
-        const h_vec = m3.cross(position, velocity);
-        const h = Math.sqrt(
-            Math.pow(h_vec[0], 2) +
-                Math.pow(h_vec[1], 2) +
-                Math.pow(h_vec[2], 2)
-        );
-
-        const i = Math.acos(h_vec[2] / h);
-
-        let e_vec = m3.cross(velocity, h_vec);
-        for (let i = 0; i < 3; i++) {
-            e_vec[i] /= mu;
-            e_vec[i] -= position[i] / r;
-        }
-
-        const e = Math.sqrt(
-            Math.pow(e_vec[0], 2) +
-                Math.pow(e_vec[1], 2) +
-                Math.pow(e_vec[2], 2)
-        );
-
-        let nu_r_vec = [...position];
-        let nu_e_vec = [...e_vec];
-
-        for (let i = 0; i < 3; i++) {
-            nu_r_vec[i] /= r;
-            nu_e_vec[i] /= e;
-        }
-
-        const p = Math.pow(h, 2) / mu;
-        const r_min = p / (1 + e * Math.cos(0));
-        const r_max = p / (1 + e * Math.cos(Math.PI));
-        const semiMajorAxis = (r_max + r_min) / 2;
-        const semiMinorAxis = Math.sqrt(r_max * r_min);
-
-        let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
-        const orbitalPeriod =
-            2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * masses));
-
-        const XYZ = [0, 1, 2];
-
-        const K = [0, 0, 1];
-        const N_vec = m3.cross(K, h_vec);
-        const N = Math.sqrt(
-            Math.pow(N_vec[0], 2) +
-                Math.pow(N_vec[1], 2) +
-                Math.pow(N_vec[2], 2)
-        );
-
-        let Omega = Math.acos(N_vec[0] / N);
-        if (N[XYZ[1]] >= 0) {
-            Omega = 2 * Math.PI - Omega;
-        }
-
-        let omega = Math.acos(m3.dot(N_vec, e_vec) / (N * e));
-        if (e_vec[XYZ[2]] < 0) {
-            omega = 2 * Math.PI - omega;
-        }
-        return {
-            r,
-            center,
-            semiMajorAxis,
-            semiMinorAxis,
-            orbitalPeriod,
-            rightAscensionNode: Omega,
-            argumentOfPeriapsis: omega,
-            nu,
-            i,
-            v,
-            h,
-            e,
-        };
+        return keplerianParameters(position, velocity, center, masses);
     }
 
     /** For each body, compute its updated position based on the effects of physics */
@@ -259,6 +171,97 @@ export class PhysicsEngine {
             }
         }
     }
+}
+
+export function keplerianParameters(
+    position: number[],
+    velocity: number[],
+    center: number[],
+    mass: number
+) {
+    // TODO: this fails when there are multiple large
+    // objects around.
+    for (let j = 0; j < 3; j++) {
+        position[j] -= center[j];
+    }
+
+    const mu = G * mass;
+    const r = Math.sqrt(
+        Math.pow(position[0], 2) +
+            Math.pow(position[1], 2) +
+            Math.pow(position[2], 2)
+    );
+    const v = Math.sqrt(
+        Math.pow(velocity[0], 2) +
+            Math.pow(velocity[1], 2) +
+            Math.pow(velocity[2], 2)
+    );
+    const h_vec = m3.cross(position, velocity);
+    const h = Math.sqrt(
+        Math.pow(h_vec[0], 2) + Math.pow(h_vec[1], 2) + Math.pow(h_vec[2], 2)
+    );
+
+    const i = Math.acos(h_vec[2] / h);
+
+    let e_vec = m3.cross(velocity, h_vec);
+    for (let i = 0; i < 3; i++) {
+        e_vec[i] /= mu;
+        e_vec[i] -= position[i] / r;
+    }
+
+    const e = Math.sqrt(
+        Math.pow(e_vec[0], 2) + Math.pow(e_vec[1], 2) + Math.pow(e_vec[2], 2)
+    );
+
+    let nu_r_vec = [...position];
+    let nu_e_vec = [...e_vec];
+
+    for (let i = 0; i < 3; i++) {
+        nu_r_vec[i] /= r;
+        nu_e_vec[i] /= e;
+    }
+
+    const p = Math.pow(h, 2) / mu;
+    const r_min = p / (1 + e * Math.cos(0));
+    const r_max = p / (1 + e * Math.cos(Math.PI));
+    const semiMajorAxis = (r_max + r_min) / 2;
+    const semiMinorAxis = Math.sqrt(r_max * r_min);
+
+    let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
+    const orbitalPeriod =
+        2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * mass));
+
+    const XYZ = [0, 1, 2];
+
+    const K = [0, 0, 1];
+    const N_vec = m3.cross(K, h_vec);
+    const N = Math.sqrt(
+        Math.pow(N_vec[0], 2) + Math.pow(N_vec[1], 2) + Math.pow(N_vec[2], 2)
+    );
+
+    let Omega = Math.acos(N_vec[0] / N);
+    if (N[XYZ[1]] >= 0) {
+        Omega = 2 * Math.PI - Omega;
+    }
+
+    let omega = Math.acos(m3.dot(N_vec, e_vec) / (N * e));
+    if (e_vec[XYZ[2]] < 0) {
+        omega = 2 * Math.PI - omega;
+    }
+    return {
+        r,
+        center,
+        semiMajorAxis,
+        semiMinorAxis,
+        orbitalPeriod,
+        rightAscensionNode: Omega,
+        argumentOfPeriapsis: omega,
+        nu,
+        i,
+        v,
+        h,
+        e,
+    };
 }
 
 function rk4iter(

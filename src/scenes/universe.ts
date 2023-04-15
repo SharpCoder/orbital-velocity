@@ -1,8 +1,11 @@
+import { debug } from 'svelte/internal';
 import {
     DefaultShader,
     Engine,
     Flatten,
     loadModel,
+    m4,
+    norm,
     r,
     rads,
     Repeat,
@@ -13,12 +16,12 @@ import {
 } from 'webgl-engine';
 import { pink, sage, yellow } from '../colors';
 import { useTouchCamera } from '../logic/useTouchCamera';
-import { PhysicsEngine } from '../math/physics';
+import { keplerianParameters, PhysicsEngine } from '../math/physics';
 import { drawManeuverNode } from '../objects/maneuverNode';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
-import type { EngineHud } from '../types';
+import type { EngineProperties } from '../types';
 
 const offset = 0;
 const offsetY = 0;
@@ -26,13 +29,13 @@ const offsetY = 0;
 const physicsEngine = new PhysicsEngine();
 
 const Sun = physicsEngine.addBody({
-    position: [-500 - offset, 0, 0],
+    position: [0, 0, 0],
     velocity: [0, 0, 0],
     mass: 1e26,
 });
 
 const Satellite = physicsEngine.addBody({
-    position: [1000 - offset, 0, 0],
+    position: [1500 - offset, 0, 0],
     velocity: [0, 20, 30],
     mass: 1e1,
 });
@@ -42,10 +45,13 @@ const Planet = physicsEngine.addBody({
     mass: 1e26,
 });
 
+const cubeSize = 25;
 const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
 const orbit = drawOrbit(
-    physicsEngine,
-    Satellite,
+    Satellite.position,
+    Satellite.velocity,
+    Sun.position,
+    Sun.mass + Satellite.mass,
     {
         color: sage,
     },
@@ -54,26 +60,79 @@ const orbit = drawOrbit(
     }
 );
 
-const cubeSize = 25;
+const maneuverOrbit = drawOrbit(
+    Satellite.position,
+    Satellite.velocity,
+    Sun.position,
+    Sun.mass + Satellite.mass,
+    {
+        color: pink,
+    }
+);
 
-export const UniverseScene = new Scene<EngineHud>({
+export const UniverseScene = new Scene<EngineProperties>({
     title: 'universe',
     shaders: [DefaultShader, DepthShader, StarboxShader],
     init: (engine) => {
-        engine.settings.fogColor = [1, 1, 1, 1];
-        engine.settings.fogColor = [0, 0, 0, 1];
         const { camera } = UniverseScene;
+        engine.settings.fogColor = [0, 0, 0, 1];
+
+        // Start with physics frozen
+        engine.properties.freezePhysics = true;
+
         camera.rotation[0] = -rads(180 + 45);
         camera.rotation[1] = -rads(180);
         camera.position = [...Sun.position];
+        camera.position[0] += 500;
     },
     update: (time, engine) => {
         const { camera } = engine.activeScene;
         useTouchCamera(engine);
 
         if (engine.properties.freezePhysics !== true) {
-            physicsEngine.update(0.02);
+            physicsEngine.update(0.025);
         }
+
+        // Calculate the new orbit
+        const accel = 0.3;
+        // const unit = m4.cross(Sun.position, Satellite.position);
+        // const unit = Satellite.velocity;
+
+        const unit = Satellite.velocity;
+        const mag = norm(unit) * 1;
+
+        const vx = accel * (unit[0] / mag);
+        const vy = accel * (unit[1] / mag);
+        const vz = accel * (unit[2] / mag);
+
+        const params = keplerianParameters(
+            Satellite.position,
+            Satellite.velocity,
+            Sun.position,
+            Sun.mass
+        );
+        const { prograde, across } = engine.properties.orbit;
+
+        const maneuverPosition = [...Satellite.position];
+        const maneuverVelocity = [
+            Satellite.velocity[0] + vx * prograde,
+            Satellite.velocity[1] + vy * prograde,
+            Satellite.velocity[2] + vz * prograde,
+        ];
+
+        maneuverOrbit.recalculateOrbit(
+            maneuverPosition,
+            maneuverVelocity,
+            Sun.position,
+            Sun.mass + Satellite.mass
+        );
+
+        orbit.recalculateOrbit(
+            Satellite.position,
+            Satellite.velocity,
+            Sun.position,
+            Sun.mass + Satellite.mass
+        );
     },
     onMouseUp: (engine) => {
         const { mouseClickDuration } = engine;
@@ -155,7 +214,7 @@ fetch('models/ball.obj')
                 this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
 
                 const readoutLines = [
-                    `Δv: <${r(Satellite.velocity[0])}, ${r(
+                    `velocity <${r(Satellite.velocity[0])}, ${r(
                         Satellite.velocity[1]
                     )}, ${r(Satellite.velocity[2])}>`,
                 ];
@@ -166,3 +225,4 @@ fetch('models/ball.obj')
     });
 
 UniverseScene.addObject(orbit);
+UniverseScene.addObject(maneuverOrbit);

@@ -16,18 +16,59 @@ import {
     type LineToProps,
 } from '../drawing';
 import { EllipseCalculator } from '../math/ellipse';
-import type { PhysicsEngine, Body } from '../math/physics';
+import {
+    type PhysicsEngine,
+    type Body,
+    keplerianParameters,
+} from '../math/physics';
 import { createContainer } from './container';
 
+export type Orbit3d = Obj3d & {
+    recalculateOrbit: (
+        position: number[],
+        velocity: number[],
+        origin: number[],
+        mass: number
+    ) => void;
+};
+
 export function drawOrbit(
-    physicsEngine: PhysicsEngine,
-    body: Body,
+    position: number[],
+    velocity: number[],
+    origin: number[],
+    mass: number,
     lineProps?: Partial<Omit<Omit<LineToProps, 'from'>, 'to'>>,
     containerProps?: Partial<Obj3d>
-): Obj3d {
-    const orbit = createContainer({
-        ...containerProps,
-    });
+): Orbit3d {
+    let e,
+        center,
+        semiMajorAxis,
+        semiMinorAxis,
+        rightAscensionNode,
+        argumentOfPeriapsis,
+        i;
+
+    const orbit: Orbit3d = {
+        ...createContainer({
+            ...containerProps,
+        }),
+        recalculateOrbit: (position, velocity, origin, mass) => {
+            const params = keplerianParameters(
+                [...position],
+                [...velocity],
+                [...origin],
+                mass
+            );
+
+            e = params.e;
+            center = params.center;
+            semiMajorAxis = params.semiMajorAxis;
+            semiMinorAxis = params.semiMinorAxis;
+            rightAscensionNode = params.rightAscensionNode;
+            argumentOfPeriapsis = params.argumentOfPeriapsis;
+            i = params.i;
+        },
+    };
 
     // Create the segments
     const segments: Obj3d[] = [];
@@ -50,18 +91,10 @@ export function drawOrbit(
         orbit.children.push(segment);
     }
 
+    orbit.recalculateOrbit(position, velocity, origin, mass);
+
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
-        const {
-            e,
-            center,
-            semiMajorAxis,
-            semiMinorAxis,
-            rightAscensionNode,
-            argumentOfPeriapsis,
-            i,
-        } = physicsEngine.keplerianParameters(body);
-
         // TODO: Handle eccentricity > 1.0
         if (e <= 1.0) {
             const positions = EllipseCalculator.compute({
@@ -111,8 +144,6 @@ export function drawOrbit(
             const rotation = getAnglesFromMatrix(matrix);
             orbit.rotation = rotation;
             orbit.offsets = [fociX, -center[1], -center[2]];
-        } else {
-            console.error('oops e is not within tolerance');
         }
 
         originalUpdate && originalUpdate.call(this, time_t, engine);

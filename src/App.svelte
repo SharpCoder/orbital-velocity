@@ -2,7 +2,8 @@
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
     import Hud from './components/Hud.svelte';
-    import type { EngineHud } from './types';
+    import type { EngineProperties } from './types';
+    import ManeuverDialog from './components/ManeuverDialog.svelte';
 
     let debugEl: HTMLDivElement;
     let webglCanvas: HTMLCanvasElement;
@@ -10,7 +11,7 @@
     let timerId;
 
     onMount(() => {
-        const engine = window['gameEngine'] as Engine<EngineHud>;
+        const engine = window['gameEngine'] as Engine<EngineProperties>;
 
         if (timerId) {
             clearInterval(timerId);
@@ -24,7 +25,7 @@
     });
 
     $: {
-        const engine: Engine<EngineHud> = window['gameEngine'];
+        const engine: Engine<EngineProperties> = window['gameEngine'];
 
         if (webglCanvas) {
             if (!initialized) {
@@ -40,6 +41,7 @@
 <div id="debug" bind:this={debugEl} />
 <canvas id="canvas" bind:this={webglCanvas} />
 <Hud />
+<ManeuverDialog visible={true} />
 
 <style>
     #canvas {
@@ -48,11 +50,11 @@
     }
 
     #debug {
-        font-family: monospace;
+        font-family: 'Nanum Gothic Coding', monospace;
         position: absolute;
-        font-size: 1.5rem;
+        font-size: 1rem;
         color: white;
-        top: 0;
+        bottom: 0;
         right: 0;
         padding: 20px;
         opacity: 0.8;

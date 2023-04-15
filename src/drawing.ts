@@ -80,7 +80,7 @@ export type LineToProps = {
     color?: Vec3D;
     sides?: number;
     thickness?: number;
-};
+} & Partial<Obj3d>;
 
 export function lineToPositionAndRotation({
     from,
@@ -124,7 +124,7 @@ export function lineTo({
     thickness,
     color,
     ...props
-}: LineToProps & Partial<Obj3d>): Obj3d {
+}: LineToProps): Obj3d {
     return {
         ...drawCylinder({
             ...lineToPositionAndRotation({ from, to }),

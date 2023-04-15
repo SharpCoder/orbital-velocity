@@ -1,23 +1,21 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
-    import type { EngineHud } from '../types';
+    import type { EngineProperties } from '../types';
 
-    const engine = window['gameEngine'] as Engine<EngineHud>;
+    const engine = window['gameEngine'] as Engine<EngineProperties>;
     let readoutEl;
-    let timeText = 'Freeze';
-    let readout = '';
+    let timeText = 'Resume';
 
     onMount(() => {
         setInterval(() => {
             if (engine && readoutEl) {
-                readoutEl.innerText = engine.properties['readout'];
+                readoutEl.innerText = engine.properties['readout'] ?? '';
             }
         }, 40);
     });
 
     function handleToggleTime() {
-        console.log(engine);
         if (engine) {
             if (timeText === 'Freeze') {
                 engine.properties.freezePhysics = true;
