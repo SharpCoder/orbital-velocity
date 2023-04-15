@@ -10,6 +10,7 @@ import {
     zeros,
     type Obj3d,
 } from 'webgl-engine';
+import { pink, sage, yellow } from '../colors';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { PhysicsEngine } from '../math/physics';
 import { drawManeuverNode } from '../objects/maneuverNode';
@@ -32,6 +33,11 @@ const Satellite = physicsEngine.addBody({
     position: [1000 - offset, 0, 0],
     velocity: [0, 20, 30],
     mass: 1e1,
+});
+const Planet = physicsEngine.addBody({
+    position: [1500000 - offset, 0, 0],
+    velocity: [0, 0, 0],
+    mass: 1e26,
 });
 
 const cubeSize = 25;
@@ -94,6 +100,28 @@ fetch('models/ball.obj')
 
         UniverseScene.addObject(TheSun);
 
+        const planetScale = 1000;
+        const ThePlanet: Obj3d = {
+            vertexes: vertexes,
+            position: Planet.position,
+            offsets: zeros(),
+            rotation: zeros(),
+            scale: [planetScale, planetScale, planetScale],
+            colors: Flatten(
+                Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
+            ),
+            update: function (t, engine) {
+                this.position = Planet.position;
+                this.offsets = [
+                    -planetScale / 2,
+                    -planetScale / 2,
+                    -planetScale / 2,
+                ];
+            },
+        };
+
+        UniverseScene.addObject(ThePlanet);
+
         UniverseScene.addObject({
             ...obj,
             position: zeros(),
@@ -108,10 +136,7 @@ fetch('models/ball.obj')
                 this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
 
                 const readoutLines = [
-                    `Position: <${r(Satellite.position[0])}, ${r(
-                        Satellite.position[1]
-                    )}, ${r(Satellite.position[2])}>`,
-                    `Velocity: <${r(Satellite.velocity[0])}, ${r(
+                    `Δv: <${r(Satellite.velocity[0])}, ${r(
                         Satellite.velocity[1]
                     )}, ${r(Satellite.velocity[2])}>`,
                 ];
@@ -121,12 +146,12 @@ fetch('models/ball.obj')
         });
     });
 
-const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.2);
+const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
 const orbit = drawOrbit(
     physicsEngine,
     Satellite,
     {
-        color: [128, 64, 255],
+        color: sage,
     },
     {
         children: [orbitalManeuverNode],

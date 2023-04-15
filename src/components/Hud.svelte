@@ -66,11 +66,11 @@
     .physics-space button {
         width: 100px;
         padding: 10px;
-        background-color: white;
+        background-color: black;
         border: none;
         cursor: pointer;
-        color: black;
-        opacity: 0.7;
+        color: white;
+        outline: 1px solid var(--sage);
     }
 
     .physics-space button:hover {
@@ -79,15 +79,9 @@
         outline: 1px solid white;
     }
 
-    .physics-space button:focus {
-        outline: 1px solid red;
-    }
-
     .readout {
         color: white;
         line-height: 1.5rem;
-        opacity: 0.7;
-        flex-grow: 1;
         -webkit-user-select: none; /* Safari */
         -ms-user-select: none; /* IE 10 and IE 11 */
         user-select: none; /* Standard syntax */

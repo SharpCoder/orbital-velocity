@@ -5,7 +5,7 @@ import { UniverseScene } from './scenes/universe';
 
 let engine = new Engine();
 window['gameEngine'] = engine;
-engine.settings.zFar = 15000;
+engine.settings.zFar = 150000;
 
 // Register the scenes
 engine.addScene(UniverseScene);
