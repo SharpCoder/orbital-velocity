@@ -52,13 +52,8 @@ export function drawOrbit(
         ...createContainer({
             ...containerProps,
         }),
-        recalculateOrbit: (position, velocity, origin, mass) => {
-            const params = keplerianParameters(
-                [...position],
-                [...velocity],
-                [...origin],
-                mass
-            );
+        recalculateOrbit: (p, v, o, mass) => {
+            const params = keplerianParameters([...p], [...v], [...o], mass);
 
             e = params.e;
             center = params.center;

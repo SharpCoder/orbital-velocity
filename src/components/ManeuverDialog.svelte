@@ -16,6 +16,11 @@
             };
         }
     }
+
+    function reset() {
+        prograde = 0;
+        across = 0;
+    }
 </script>
 
 <div class="modal-container">
@@ -23,7 +28,9 @@
         <div class="modal-title">Orbital Maneuver</div>
         <div class="modal-body">
             <div class="option">
-                Prograde
+                <div class="label">
+                    Retrograde <span class="spacer" /> Prograde
+                </div>
                 <Slider
                     style="flex-grow: 1; width: 100%;"
                     min={-100}
@@ -32,7 +39,7 @@
                 />
             </div>
             <div class="option">
-                Across
+                Phase Shift
                 <Slider
                     style="flex-grow: 1; width: 100%;"
                     min={-100}
@@ -40,15 +47,32 @@
                     bind:value={across}
                 />
             </div>
+            <button class="btn-reset" on:click={reset}>Reset</button>
         </div>
     </div>
 </div>
 
 <style type="text/css">
+    .label {
+        display: flex;
+        width: 100%;
+    }
+    .spacer {
+        flex-grow: 1;
+    }
+    .btn-reset {
+        padding: 10px;
+        width: 100%;
+        cursor: pointer;
+        background-color: #222;
+        color: white;
+        border: none;
+        margin-top: 20px;
+    }
+
     .modal-container {
         position: absolute;
         width: 100%;
-        height: 100%;
         flex-grow: 1;
         display: flex;
         font-family: 'Nanum Gothic Coding', monospace;
@@ -61,9 +85,10 @@
         outline: 1px solid #cecece;
         background-color: rgba(0, 0, 0, 0.85);
         color: #cecece;
-        width: 200px;
-        height: 200px;
-        padding: 20px;
+        width: 220px;
+        flex-shrink: 1;
+        padding: 10px;
+        padding-top: 20px;
         margin-right: 20px;
         margin-top: 100px;
         border-radius: 8px;
@@ -73,7 +98,7 @@
     .modal-title {
         text-align: center;
         font-weight: bold;
-        font-size: 1.25rem;
+        font-size: 1.15rem;
         padding-bottom: 15px;
     }
 

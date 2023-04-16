@@ -128,6 +128,50 @@ export class PhysicsEngine {
         return keplerianParameters(position, velocity, center, masses);
     }
 
+    private create_state_vec(targetOfInterest: number) {
+        const bodies = this.enabled_bodies();
+        const target = bodies[targetOfInterest];
+        let state_vec = [...target.position];
+        let masses = [target.mass];
+
+        // Formulate the position vectors
+        for (let k = 0; k < bodies.length; k++) {
+            if (k === targetOfInterest) continue;
+            masses.push(bodies[k].mass);
+            state_vec = [...state_vec, ...bodies[k].position];
+        }
+
+        // Formulate the velocity vectors
+        state_vec = [...state_vec, ...target.velocity];
+        for (let k = 0; k < bodies.length; k++) {
+            if (k === targetOfInterest) continue;
+            state_vec = [...state_vec, ...bodies[k].velocity];
+        }
+
+        return [state_vec, masses];
+    }
+
+    /** Take an initial state vector and step through time, generating new state vectors along the way */
+    project(
+        target: Body,
+        acceleration: number[],
+        dt: number,
+        duration: number
+    ) {
+        const bodies = this.enabled_bodies();
+        const targetOfInterest = bodies.indexOf(target);
+        let [state_vector, masses] = this.create_state_vec(targetOfInterest);
+        const midpoint = state_vector.length / 2;
+
+        for (let i = 0; i < duration; i += dt) {
+            state_vector = rk4iter(this.solve, [...state_vector], masses, dt);
+            for (let j = 0; j < 3; j++) {
+                state_vector[midpoint + j] += acceleration[j];
+            }
+        }
+        return rk4iter(this.solve, [...state_vector], masses, dt);
+    }
+
     /** For each body, compute its updated position based on the effects of physics */
     update(dt: number) {
         const bodies = this.enabled_bodies();
@@ -136,23 +180,7 @@ export class PhysicsEngine {
             if (bodies[i].fixed) continue;
 
             const target = bodies[i];
-            const masses = [target.mass];
-
-            let state_vec = [...bodies[i].position];
-
-            for (let k = 0; k < bodies.length; k++) {
-                if (k === i) continue;
-                masses.push(bodies[k].mass);
-                state_vec = [...state_vec, ...bodies[k].position];
-            }
-
-            state_vec = [...state_vec, ...bodies[i].velocity];
-
-            for (let k = 0; k < bodies.length; k++) {
-                if (k === i) continue;
-                state_vec = [...state_vec, ...bodies[k].velocity];
-            }
-
+            let [state_vec, masses] = this.create_state_vec(i);
             const next_state = rk4iter(this.solve, [...state_vec], masses, dt);
             const midpoint = next_state.length / 2;
 
@@ -186,21 +214,14 @@ export function keplerianParameters(
     }
 
     const mu = G * mass;
-    const r = Math.sqrt(
-        Math.pow(position[0], 2) +
-            Math.pow(position[1], 2) +
-            Math.pow(position[2], 2)
-    );
-    const v = Math.sqrt(
-        Math.pow(velocity[0], 2) +
-            Math.pow(velocity[1], 2) +
-            Math.pow(velocity[2], 2)
+    const r = norm(position);
+    const v = norm(velocity);
+    const v_r = m3.dot(
+        [position[0] / r, position[1] / r, position[2] / r],
+        velocity
     );
     const h_vec = m3.cross(position, velocity);
-    const h = Math.sqrt(
-        Math.pow(h_vec[0], 2) + Math.pow(h_vec[1], 2) + Math.pow(h_vec[2], 2)
-    );
-
+    const h = norm(h_vec);
     const i = Math.acos(h_vec[2] / h);
 
     let e_vec = m3.cross(velocity, h_vec);
@@ -209,10 +230,7 @@ export function keplerianParameters(
         e_vec[i] -= position[i] / r;
     }
 
-    const e = Math.sqrt(
-        Math.pow(e_vec[0], 2) + Math.pow(e_vec[1], 2) + Math.pow(e_vec[2], 2)
-    );
-
+    const e = norm(e_vec);
     let nu_r_vec = [...position];
     let nu_e_vec = [...e_vec];
 
@@ -228,6 +246,10 @@ export function keplerianParameters(
     const semiMinorAxis = Math.sqrt(r_max * r_min);
 
     let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
+    if (v_r < 0) {
+        nu = 2 * Math.PI - nu;
+    }
+
     const orbitalPeriod =
         2 * Math.PI * Math.sqrt(Math.pow(semiMajorAxis, 3) / (G * mass));
 
@@ -235,11 +257,9 @@ export function keplerianParameters(
 
     const K = [0, 0, 1];
     const N_vec = m3.cross(K, h_vec);
-    const N = Math.sqrt(
-        Math.pow(N_vec[0], 2) + Math.pow(N_vec[1], 2) + Math.pow(N_vec[2], 2)
-    );
-
+    const N = norm(N_vec);
     let Omega = Math.acos(N_vec[0] / N);
+
     if (N[XYZ[1]] >= 0) {
         Omega = 2 * Math.PI - Omega;
     }
