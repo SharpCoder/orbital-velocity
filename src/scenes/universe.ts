@@ -1,9 +1,11 @@
 import { debug } from 'svelte/internal';
 import {
     DefaultShader,
+    degs,
     Engine,
     Flatten,
     loadModel,
+    m3,
     m4,
     norm,
     r,
@@ -17,15 +19,13 @@ import {
 import { pink, purple, sage, yellow } from '../colors';
 import { lineTo, lineToPositionAndRotation } from '../drawing';
 import { useTouchCamera } from '../logic/useTouchCamera';
-import { keplerianParameters, PhysicsEngine } from '../math/physics';
+import { keplerianParameters, PhysicsEngine, type Body } from '../math/physics';
+import { createContainer } from '../objects/container';
 import { drawManeuverNode } from '../objects/maneuverNode';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
-
-const offset = 0;
-const offsetY = 0;
 
 const physicsEngine = new PhysicsEngine();
 
@@ -36,17 +36,20 @@ const Sun = physicsEngine.addBody({
 });
 
 const Satellite = physicsEngine.addBody({
-    position: [1500 - offset, 0, 0],
-    velocity: [0, 20, 30],
-    mass: 1e1,
+    // position: [1500 - offset, 0, 0],
+    // velocity: [0, 20, 30],
+    position: [1500, 100, 0],
+    velocity: [0, 30, 40],
+    mass: 1,
 });
+
 // const Planet = physicsEngine.addBody({
 //     position: [1500000 - offset, 0, 0],
 //     velocity: [0, 0, 0],
 //     mass: 1e26,
 // });
 
-const dt = 0.05;
+const dt = 0.1;
 const cubeSize = 25;
 const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
 const orbit = drawOrbit(
@@ -62,6 +65,7 @@ const orbit = drawOrbit(
     }
 );
 
+const maneuverSatellite = createContainer({});
 const maneuverOrbit = drawOrbit(
     Satellite.position,
     Satellite.velocity,
@@ -79,6 +83,27 @@ const vectorLine = lineTo({
     color: [255, 0, 0],
 });
 
+const tangentLine = lineTo({
+    from: [0, 0, 0],
+    to: [0, 0, 0],
+    thickness: 1,
+    color: [255, 0, 0],
+});
+
+const orbitalVelocityLine = lineTo({
+    from: [0, 0, 0],
+    to: [0, 0, 0],
+    thickness: 1,
+    color: [0, 0, 255],
+});
+
+let elapsedPhysicsTimer = 0;
+
+// Advance 41 seconds
+for (let t = 0; t < 41.7; t += dt) {
+    physicsEngine.update(dt);
+}
+
 export const UniverseScene = new Scene<EngineProperties>({
     title: 'universe',
     shaders: [DefaultShader, DepthShader, StarboxShader],
@@ -89,31 +114,26 @@ export const UniverseScene = new Scene<EngineProperties>({
         // Start with physics frozen
         engine.properties.freezePhysics = true;
 
-        camera.rotation[0] = -rads(180 + 45);
-        camera.rotation[1] = -rads(180);
+        // camera.rotation[0] = -rads(180 + 45);
+        // camera.rotation[1] = -rads(180);
+        camera.rotation[0] = -rads(188);
+        camera.rotation[1] = -rads(263);
+
         camera.position = [...Sun.position];
         camera.position[0] += 500;
     },
     update: (time, engine) => {
-        const { camera } = engine.activeScene;
+        const { prograde, across } = engine.properties.orbit;
+
         useTouchCamera(engine);
 
         if (engine.properties.freezePhysics !== true) {
             physicsEngine.update(dt);
+            elapsedPhysicsTimer += dt;
         }
 
         // Calculate the new orbit
         const accel = 0.4;
-        // const unit = m4.cross(Sun.position, Satellite.position);
-        // const unit = Satellite.velocity;
-
-        const unit = [...Satellite.velocity];
-        const mag = norm(unit);
-
-        const vx = accel * (unit[0] / mag);
-        const vy = accel * (unit[1] / mag);
-        const vz = accel * (unit[2] / mag);
-
         const params = keplerianParameters(
             Satellite.position,
             Satellite.velocity,
@@ -121,10 +141,8 @@ export const UniverseScene = new Scene<EngineProperties>({
             Sun.mass
         );
 
-        const { prograde, across } = engine.properties.orbit;
-
         // Calculate the gravity field
-        const gfield = Satellite._forces.reduce(
+        const gravityField = Satellite._forces.reduce(
             (acc, cur) => {
                 acc[0] += cur[0];
                 acc[1] += cur[1];
@@ -134,53 +152,42 @@ export const UniverseScene = new Scene<EngineProperties>({
             [0, 0, 0]
         );
 
-        const gfieldMag = norm(gfield);
+        engine.debug(`${r(gravityField[0])} [gx]`);
+        engine.debug(`${r(gravityField[1])} [gy]`);
+        engine.debug(`${r(gravityField[2])} [gz]`);
 
-        const matrixes = m4.combine([
-            m4.rotateY(params.rightAscensionNode),
-            m4.rotateX(params.i - Math.PI / 2),
-            m4.rotateY(params.argumentOfPeriapsis),
-            m4.rotateZ(rads(90)),
-            // m4.rotateZ(-params.nu),
-            // m4.rotateX(-rads(90)),
-            // m4.translate(unit[0], unit[1], unit[2]),
-            m4.translate(1, 0, 0),
-            // m4.translate(unit[0] / mag, unit[1] / mag, unit[2] / mag),
-            // m4.rotateY(rads(45)),
-        ]);
+        const gfieldMag = norm(gravityField);
 
-        const v2 = [matrixes[12], matrixes[13], matrixes[14]];
-        // const v2 = m4.cross(
-        //     unit,
-        //     // gfield,
-        //     [1, 0, 0]
-        // );
+        const unit = [...Satellite.velocity]; //.map((u, i) => u - gravityField[i]);
+        const mag = norm(unit);
 
+        const vx = accel * (unit[0] / mag);
+        const vy = accel * (unit[1] / mag);
+        const vz = accel * (unit[2] / mag);
+
+        const v2 = m4.cross(
+            unit.map((v, i) => gravityField[i]),
+            unit.map((v) => v)
+        );
         const v2norm = norm(v2);
-        let dvx = vx * prograde + accel * across * (v2[0] / v2norm);
-        let dvy = vy * prograde + accel * across * (v2[1] / v2norm);
-        let dvz = vz * prograde + accel * across * (v2[2] / v2norm);
 
-        engine.debug(`${dvx} [dvx]`);
-        engine.debug(`${dvy} [dvy]`);
-        engine.debug(`${dvz} [dvz]`);
-        // Project
-        // const stateVector = physicsEngine.project(
-        //     Satellite,
-        //     [dvx, dvy, dvz],
-        //     dt,
-        //     dt
-        // );
+        let dvx = vx * prograde + across * accel * (v2[0] / v2norm);
+        let dvy = vy * prograde + across * accel * (v2[1] / v2norm);
+        let dvz = vz * prograde + across * accel * (v2[2] / v2norm);
 
-        // const midpoint = stateVector.length / 2;
-        const maneuverPosition = [...Satellite.position];
-        const maneuverVelocity = [unit[0] + dvx, unit[1] + dvy, unit[2] + dvz];
+        // for (let j = 0; j < 3; j++) {
+        //     dv[j] = gravityField[j] - dv[j];
+        // }
+        // let dvx = vx * prograde + v3[0];
+        // let dvy = vy * prograde + v3[1];
+        // let dvz = vz * prograde + v3[2];
+
         const vectorLineUpdate = lineTo({
             from: [...Satellite.position],
             to: [
-                Satellite.position[0] + (unit[0] + dvx) * 2,
-                Satellite.position[1] + (unit[1] + dvy) * 2,
-                Satellite.position[2] + (unit[2] + dvz) * 2,
+                Satellite.position[0] + dvx * 10,
+                Satellite.position[1] + dvy * 10,
+                Satellite.position[2] + dvz * 10,
             ],
             thickness: 5,
         });
@@ -189,16 +196,78 @@ export const UniverseScene = new Scene<EngineProperties>({
             vectorLine[prop] = vectorLineUpdate[prop];
         }
 
-        // const maneuverPosition = [...Satellite.position];
-        // const maneuverVelocity = [unit[0] + dvx, unit[1] + dvy, unit[2] + dvz];
-        const gf = gfield.map((p) => p / gfieldMag);
+        const orbitalLineUpdate = lineTo({
+            from: [...Satellite.position],
+            to: [
+                Satellite.position[0] + gravityField[0] * 50,
+                Satellite.position[1] + gravityField[1] * 50,
+                Satellite.position[2] + gravityField[2] * 50,
+            ],
+            color: [0, 128, 255],
+            thickness: 5,
+        });
+
+        for (const prop in orbitalLineUpdate) {
+            orbitalVelocityLine[prop] = orbitalLineUpdate[prop];
+        }
+
+        const tangentLineUpdate = lineTo({
+            from: [...Satellite.position],
+            to: [
+                Satellite.position[0] + unit[0] * 5,
+                Satellite.position[1] + unit[1] * 5,
+                Satellite.position[2] + unit[2] * 5,
+            ],
+            color: pink,
+            thickness: 5,
+        });
+
+        for (const prop in tangentLineUpdate) {
+            tangentLine[prop] = tangentLineUpdate[prop];
+        }
+
+        let bodyNext: Body = {
+            _forces: [...Satellite._forces],
+            internalId: Satellite.internalId,
+            mass: Satellite.mass,
+            position: [...Satellite.position],
+            velocity: [...Satellite.velocity],
+        };
+
+        bodyNext = physicsEngine.project(dt, 10, bodyNext);
+
+        let shadowBody: Body = {
+            _forces: [...Satellite._forces],
+            internalId: Satellite.internalId,
+            mass: Satellite.mass,
+            position: [...Satellite.position],
+            velocity: [
+                Satellite.velocity[0] + dvx,
+                Satellite.velocity[1] + dvy,
+                Satellite.velocity[2] + dvz,
+            ],
+        };
+
+        shadowBody = physicsEngine.project(dt, 10, shadowBody);
+
+        // Update velocity
+        // console.log({
+        //     futureBodyPos: shadowBody.position,
+        //     futureBodyvel: shadowBody.velocity,
+        // });
+
+        const maneuverPosition = [...shadowBody.position];
+        const maneuverVelocity = [...shadowBody.velocity];
 
         maneuverOrbit.recalculateOrbit(
-            [...Satellite.position],
-            [unit[0] + dvx, unit[1] + dvy, unit[2] + dvz],
+            [...maneuverPosition],
+            [...maneuverVelocity],
             Sun.position,
             Sun.mass + Satellite.mass
         );
+
+        // maneuverSatellite.children[0].transparent = true;
+        maneuverSatellite.position = [...shadowBody.position];
 
         orbit.recalculateOrbit(
             Satellite.position,
@@ -210,7 +279,7 @@ export const UniverseScene = new Scene<EngineProperties>({
     onMouseUp: (engine) => {
         const { mouseClickDuration } = engine;
         if (mouseClickDuration < 180 && !orbitalManeuverNode.transparent) {
-            alert('hello');
+            // alert('hello');
         }
     },
     status: 'initializing',
@@ -251,6 +320,17 @@ fetch('models/ball.obj')
 
         UniverseScene.addObject(TheSun);
 
+        const ShadowSatellite: Obj3d = {
+            ...obj,
+            position: zeros(),
+            offsets: zeros(),
+            rotation: zeros(),
+            scale: [cubeSize, cubeSize, cubeSize],
+            colors: Flatten(Repeat(sage, obj.vertexes.length / 3)),
+        };
+
+        maneuverSatellite.children = [ShadowSatellite];
+
         // const planetScale = 1000;
         // const ThePlanet: Obj3d = {
         //     vertexes: vertexes,
@@ -273,6 +353,7 @@ fetch('models/ball.obj')
 
         // UniverseScene.addObject(ThePlanet);
 
+        UniverseScene.addObject(maneuverSatellite);
         UniverseScene.addObject({
             ...obj,
             position: zeros(),
@@ -285,8 +366,13 @@ fetch('models/ball.obj')
             update: function (t, engine) {
                 this.position = Satellite.position;
                 this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
+                const params = physicsEngine.keplerianParameters(Satellite);
 
                 const readoutLines = [
+                    `t: ${elapsedPhysicsTimer}`,
+                    `a: ${r(params.semiMajorAxis)}`,
+                    `b: ${r(params.semiMinorAxis)}`,
+                    `inclination: ${r(params.i)}`,
                     `velocity <${r(Satellite.velocity[0])}, ${r(
                         Satellite.velocity[1]
                     )}, ${r(Satellite.velocity[2])}>`,
@@ -297,6 +383,8 @@ fetch('models/ball.obj')
         });
     });
 
+UniverseScene.addObject(tangentLine);
 UniverseScene.addObject(vectorLine);
+UniverseScene.addObject(orbitalVelocityLine);
 UniverseScene.addObject(orbit);
 UniverseScene.addObject(maneuverOrbit);

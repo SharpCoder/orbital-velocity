@@ -25,7 +25,7 @@
 
 <div class="modal-container">
     <div class="modal">
-        <div class="modal-title">Orbital Maneuver</div>
+        <div class="modal-title">&Delta;v</div>
         <div class="modal-body">
             <div class="option">
                 <div class="label">
@@ -75,14 +75,14 @@
         width: 100%;
         flex-grow: 1;
         display: flex;
-        font-family: 'Nanum Gothic Coding', monospace;
+        font-family: var(--font);
         justify-content: flex-end;
         /* align-items: center; */
         pointer-events: none;
     }
 
     .modal {
-        outline: 1px solid #cecece;
+        outline: 1px solid rgba(255, 255, 255, 0.4);
         background-color: rgba(0, 0, 0, 0.85);
         color: #cecece;
         width: 220px;

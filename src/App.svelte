@@ -4,7 +4,9 @@
     import Hud from './components/Hud.svelte';
     import type { EngineProperties } from './types';
     import ManeuverDialog from './components/ManeuverDialog.svelte';
+    import UnitTest from './UnitTest.svelte';
 
+    let test = false;
     let debugEl: HTMLDivElement;
     let webglCanvas: HTMLCanvasElement;
     let initialized = false;
@@ -38,10 +40,14 @@
     }
 </script>
 
-<div id="debug" bind:this={debugEl} />
-<canvas id="canvas" bind:this={webglCanvas} />
-<Hud />
-<ManeuverDialog visible={true} />
+{#if test}
+    <UnitTest />
+{:else}
+    <div id="debug" bind:this={debugEl} />
+    <canvas id="canvas" bind:this={webglCanvas} />
+    <Hud />
+    <ManeuverDialog visible={true} />
+{/if}
 
 <style>
     #canvas {
@@ -50,7 +56,7 @@
     }
 
     #debug {
-        font-family: 'Nanum Gothic Coding', monospace;
+        font-family: var(--font);
         position: absolute;
         font-size: 1rem;
         color: white;

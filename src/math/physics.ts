@@ -1,10 +1,10 @@
-import { degs, m3, norm } from 'webgl-engine';
+import { m3, norm } from 'webgl-engine';
 
 type Vec3d = [number, number, number];
 type StateVector = number[];
 
 let iter = 0;
-const G = 6.6743e-20;
+export const G = 6.6743e-20;
 export type Body = {
     /** The internal id of this object */
     internalId: number;
@@ -90,7 +90,7 @@ export class PhysicsEngine {
     private orbitingBody(target: Body): Body {
         const bodies = this.enabled_bodies();
 
-        let closestForce = 0;
+        let closestForce = -1;
         let closestBody: Body;
 
         for (let i = 0; i < bodies.length; i++) {
@@ -128,15 +128,14 @@ export class PhysicsEngine {
         return keplerianParameters(position, velocity, center, masses);
     }
 
-    private create_state_vec(targetOfInterest: number) {
+    private create_state_vec(target: Body) {
         const bodies = this.enabled_bodies();
-        const target = bodies[targetOfInterest];
         let state_vec = [...target.position];
         let masses = [target.mass];
 
         // Formulate the position vectors
         for (let k = 0; k < bodies.length; k++) {
-            if (k === targetOfInterest) continue;
+            if (bodies[k].internalId === target.internalId) continue;
             masses.push(bodies[k].mass);
             state_vec = [...state_vec, ...bodies[k].position];
         }
@@ -144,32 +143,36 @@ export class PhysicsEngine {
         // Formulate the velocity vectors
         state_vec = [...state_vec, ...target.velocity];
         for (let k = 0; k < bodies.length; k++) {
-            if (k === targetOfInterest) continue;
+            if (bodies[k].internalId === target.internalId) continue;
             state_vec = [...state_vec, ...bodies[k].velocity];
         }
 
         return [state_vec, masses];
     }
 
-    /** Take an initial state vector and step through time, generating new state vectors along the way */
-    project(
-        target: Body,
-        acceleration: number[],
-        dt: number,
-        duration: number
-    ) {
-        const bodies = this.enabled_bodies();
-        const targetOfInterest = bodies.indexOf(target);
-        let [state_vector, masses] = this.create_state_vec(targetOfInterest);
-        const midpoint = state_vector.length / 2;
+    project(dt: number, duration: number, originalBody: Body): Body {
+        const body: Body = {
+            _forces: [...originalBody._forces],
+            internalId: originalBody.internalId,
+            mass: originalBody.mass,
+            position: [...originalBody.position],
+            velocity: [...originalBody.velocity],
+            disabled: originalBody.disabled,
+            fixed: originalBody.fixed,
+        };
 
-        for (let i = 0; i < duration; i += dt) {
-            state_vector = rk4iter(this.solve, [...state_vector], masses, dt);
+        // Save the force multiplier relative to each other body
+        for (let t = 0; t < duration; t += dt) {
+            let [state_vec, masses] = this.create_state_vec(body);
+            const midpoint = state_vec.length / 2;
+            const next_state = rk4iter(this.solve, [...state_vec], masses, dt);
             for (let j = 0; j < 3; j++) {
-                state_vector[midpoint + j] += acceleration[j];
+                body.position[j] = next_state[0 + j];
+                body.velocity[j] = next_state[midpoint + j];
             }
         }
-        return rk4iter(this.solve, [...state_vector], masses, dt);
+
+        return body;
     }
 
     /** For each body, compute its updated position based on the effects of physics */
@@ -180,16 +183,23 @@ export class PhysicsEngine {
             if (bodies[i].fixed) continue;
 
             const target = bodies[i];
-            let [state_vec, masses] = this.create_state_vec(i);
+            let [state_vec, masses] = this.create_state_vec(target);
             const next_state = rk4iter(this.solve, [...state_vec], masses, dt);
             const midpoint = next_state.length / 2;
 
             // Save the force multiplier relative to each other body
-            for (let i = 0; i < bodies.length - 1; i++) {
-                target._forces[i] = new Array(0, 0, 0);
+            for (let k = 0; k < bodies.length - 1; k++) {
+                const other = bodies[k];
+                const unit = [
+                    other.position[0] - target.position[0],
+                    other.position[1] - target.position[1],
+                    other.position[2] - target.position[2],
+                ];
+                const mag = norm(unit);
+                target._forces[k] = new Array(0, 0, 0);
                 for (let j = 0; j < 3; j++) {
-                    target._forces[i][j] =
-                        next_state[midpoint + (i + 1) * 3 + j];
+                    target._forces[k][j] =
+                        (other.mass * G * unit[j]) / Math.pow(mag, 3);
                 }
             }
 
@@ -207,31 +217,42 @@ export function keplerianParameters(
     center: number[],
     mass: number
 ) {
+    const shadowPosition = [...position];
+    const shadowVelocity = [...velocity];
+
     // TODO: this fails when there are multiple large
     // objects around.
     for (let j = 0; j < 3; j++) {
-        position[j] -= center[j];
+        shadowPosition[j] -= center[j];
     }
 
     const mu = G * mass;
-    const r = norm(position);
-    const v = norm(velocity);
+    const r = norm(shadowPosition);
+    const v = norm(shadowVelocity);
     const v_r = m3.dot(
-        [position[0] / r, position[1] / r, position[2] / r],
-        velocity
+        [shadowPosition[0] / r, shadowPosition[1] / r, shadowPosition[2] / r],
+        shadowVelocity
     );
-    const h_vec = m3.cross(position, velocity);
+    const v_p = Math.sqrt(Math.pow(v, 2) - Math.pow(v_r, 2));
+    const h_vec = m3.cross(shadowPosition, shadowVelocity);
     const h = norm(h_vec);
     const i = Math.acos(h_vec[2] / h);
 
-    let e_vec = m3.cross(velocity, h_vec);
-    for (let i = 0; i < 3; i++) {
-        e_vec[i] /= mu;
-        e_vec[i] -= position[i] / r;
+    let E = Math.pow(v, 2) / 2 - mu / r;
+    const a = -mu / (2 * E);
+
+    // const e_vec = np.cross(v_vec, h_vec) / mu - r_vec / r
+    const e_vec = m3.cross(shadowVelocity, h_vec);
+    for (let j = 0; j < 3; j++) {
+        e_vec[j] /= mu;
+        e_vec[j] -= shadowPosition[j] / r;
     }
 
     const e = norm(e_vec);
-    let nu_r_vec = [...position];
+    // console.log(1 + (2 * E * Math.pow(h, 2)) / Math.pow(mu, 2));
+    // console.log(e);
+
+    let nu_r_vec = [...shadowPosition];
     let nu_e_vec = [...e_vec];
 
     for (let i = 0; i < 3; i++) {
@@ -239,11 +260,9 @@ export function keplerianParameters(
         nu_e_vec[i] /= e;
     }
 
-    const p = Math.pow(h, 2) / mu;
-    const r_min = p / (1 + e * Math.cos(0));
-    const r_max = p / (1 + e * Math.cos(Math.PI));
-    const semiMajorAxis = (r_max + r_min) / 2;
-    const semiMinorAxis = Math.sqrt(r_max * r_min);
+    // console.log(e);
+    const semiMajorAxis = a;
+    const semiMinorAxis = a * Math.sqrt(1 - Math.pow(e, 2));
 
     let nu = Math.acos(m3.dot(nu_r_vec, nu_e_vec));
     if (v_r < 0) {
@@ -270,6 +289,9 @@ export function keplerianParameters(
     }
     return {
         r,
+        a,
+        v_r,
+        v_p,
         center,
         semiMajorAxis,
         semiMinorAxis,
@@ -277,10 +299,13 @@ export function keplerianParameters(
         rightAscensionNode: Omega,
         argumentOfPeriapsis: omega,
         nu,
+        mu,
         i,
         v,
         h,
+        h_vec,
         e,
+        e_vec,
     };
 }
 

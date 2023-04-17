@@ -7,6 +7,7 @@ import {
     rads,
     r,
     cuboid,
+    getAnglesFromMatrix2,
 } from 'webgl-engine';
 import {
     drawCube,
@@ -88,6 +89,12 @@ export function drawOrbit(
 
     orbit.recalculateOrbit(position, velocity, origin, mass);
 
+    let props = {
+        a: 0,
+        b: 0,
+        c: 0,
+    };
+
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
         // TODO: Handle eccentricity > 1.0
@@ -121,12 +128,20 @@ export function drawOrbit(
                 segment.position = cylinder.position;
             }
 
+            // console.log(i);
+
             // Rotate ourself
             const matrix = m4.combine([
                 m4.rotateY(rightAscensionNode),
-                m4.rotateX(i - Math.PI / 2),
+                m4.rotateX(i),
                 m4.rotateY(argumentOfPeriapsis),
             ]);
+
+            if (engine.properties['freezePhysics'] !== true) props.b -= rads(1);
+
+            engine.debug(`${degs(props.a)} [a]`);
+
+            // console.log({ i, rightAscensionNode, argumentOfPeriapsis });
 
             // TODO: idk if this is right
             let fociX = -semiMajorAxis * e;
@@ -137,7 +152,11 @@ export function drawOrbit(
             }
 
             const rotation = getAnglesFromMatrix(matrix);
-            orbit.rotation = rotation;
+            const rotation2 = getAnglesFromMatrix2(matrix);
+
+            // console.log({ rotation, rotation2 });
+
+            orbit.rotation = rotation2;
             orbit.offsets = [fociX, -center[1], -center[2]];
         }
 

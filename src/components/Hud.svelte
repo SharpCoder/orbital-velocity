@@ -64,13 +64,12 @@
     }
 
     .physics-space button {
-        width: 100px;
-        padding: 10px;
-        background-color: black;
+        width: 240px;
+        padding: 10px 20px;
+        background-color: #222;
         border: none;
         cursor: pointer;
         color: white;
-        outline: 1px solid var(--sage);
     }
 
     .physics-space button:hover {
