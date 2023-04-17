@@ -38,8 +38,8 @@ const Sun = physicsEngine.addBody({
 const Satellite = physicsEngine.addBody({
     // position: [1500 - offset, 0, 0],
     // velocity: [0, 20, 30],
-    position: [1500, 100, 0],
-    velocity: [0, 30, 40],
+    position: [1500, 150, 0],
+    velocity: [0, 20, 40],
     mass: 1,
 });
 
@@ -49,7 +49,7 @@ const Satellite = physicsEngine.addBody({
 //     mass: 1e26,
 // });
 
-const dt = 0.1;
+let dt = 0.05;
 const cubeSize = 25;
 const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
 const orbit = drawOrbit(
@@ -100,8 +100,9 @@ const orbitalVelocityLine = lineTo({
 let elapsedPhysicsTimer = 0;
 
 // Advance 41 seconds
-for (let t = 0; t < 41.7; t += dt) {
+for (let t = 0; t < 78; t += dt) {
     physicsEngine.update(dt);
+    elapsedPhysicsTimer += dt;
 }
 
 export const UniverseScene = new Scene<EngineProperties>({
@@ -116,11 +117,15 @@ export const UniverseScene = new Scene<EngineProperties>({
 
         // camera.rotation[0] = -rads(180 + 45);
         // camera.rotation[1] = -rads(180);
-        camera.rotation[0] = -rads(188);
-        camera.rotation[1] = -rads(263);
+
+        // camera.rotation[0] = -rads(188);
+        // camera.rotation[1] = -rads(263);
+
+        camera.rotation[0] = -rads(185);
+        camera.rotation[1] = rads(272);
 
         camera.position = [...Sun.position];
-        camera.position[0] += 500;
+        camera.position[0] += -500;
     },
     update: (time, engine) => {
         const { prograde, across } = engine.properties.orbit;
@@ -133,7 +138,7 @@ export const UniverseScene = new Scene<EngineProperties>({
         }
 
         // Calculate the new orbit
-        const accel = 0.4;
+        const accel = 1.0;
         const params = keplerianParameters(
             Satellite.position,
             Satellite.velocity,
@@ -151,10 +156,6 @@ export const UniverseScene = new Scene<EngineProperties>({
             },
             [0, 0, 0]
         );
-
-        engine.debug(`${r(gravityField[0])} [gx]`);
-        engine.debug(`${r(gravityField[1])} [gy]`);
-        engine.debug(`${r(gravityField[2])} [gz]`);
 
         const gfieldMag = norm(gravityField);
 
@@ -226,16 +227,6 @@ export const UniverseScene = new Scene<EngineProperties>({
             tangentLine[prop] = tangentLineUpdate[prop];
         }
 
-        let bodyNext: Body = {
-            _forces: [...Satellite._forces],
-            internalId: Satellite.internalId,
-            mass: Satellite.mass,
-            position: [...Satellite.position],
-            velocity: [...Satellite.velocity],
-        };
-
-        bodyNext = physicsEngine.project(dt, 10, bodyNext);
-
         let shadowBody: Body = {
             _forces: [...Satellite._forces],
             internalId: Satellite.internalId,
@@ -248,13 +239,16 @@ export const UniverseScene = new Scene<EngineProperties>({
             ],
         };
 
-        shadowBody = physicsEngine.project(dt, 10, shadowBody);
+        shadowBody = physicsEngine.project(dt, 7, shadowBody);
 
         // Update velocity
         // console.log({
         //     futureBodyPos: shadowBody.position,
         //     futureBodyvel: shadowBody.velocity,
         // });
+
+        engine.debug(`${shadowBody.velocity.map((a) => r(a))}`);
+        // engine.debug(`${Satellite.position[2]} [y-component]`);
 
         const maneuverPosition = [...shadowBody.position];
         const maneuverVelocity = [...shadowBody.velocity];
@@ -369,10 +363,17 @@ fetch('models/ball.obj')
                 const params = physicsEngine.keplerianParameters(Satellite);
 
                 const readoutLines = [
+                    `c: ${engine.activeScene.camera.rotation
+                        .map((d) => degs(d))
+                        .join(', ')}`,
                     `t: ${elapsedPhysicsTimer}`,
+                    `rightAscensionNode: ${r(degs(params.rightAscensionNode))}`,
+                    `argumentOfPeriapsis: ${r(
+                        degs(params.argumentOfPeriapsis)
+                    )}`,
                     `a: ${r(params.semiMajorAxis)}`,
                     `b: ${r(params.semiMinorAxis)}`,
-                    `inclination: ${r(params.i)}`,
+                    `inclination: ${r(degs(params.i))}`,
                     `velocity <${r(Satellite.velocity[0])}, ${r(
                         Satellite.velocity[1]
                     )}, ${r(Satellite.velocity[2])}>`,

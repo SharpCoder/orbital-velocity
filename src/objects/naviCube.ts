@@ -30,9 +30,6 @@ export function NaviCube(): Obj3d {
     dotProductLine.update = function (t, engine) {
         const { camera } = engine.activeScene;
         const cross = m3.cross([0, 1, 0], camera.rotation);
-        engine.debug(
-            `${r(degs(cross[0]))},${r(degs(cross[1]))},${r(degs(cross[2]))}, `
-        );
     };
 
     return hudElement;

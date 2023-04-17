@@ -132,31 +132,36 @@ export function drawOrbit(
 
             // Rotate ourself
             const matrix = m4.combine([
-                m4.rotateY(rightAscensionNode),
-                m4.rotateX(i),
+                m4.identity(),
+                m4.rotateZ(-rightAscensionNode),
                 m4.rotateY(argumentOfPeriapsis),
+                m4.rotateX(-i + rads(90)),
+                // m4.rotateY(2 * Math.PI - argumentOfPeriapsis),
+                // m4.rotateZ(-argumentOfPeriapsis),
+                // m4.rotateZ(degs(props.a)),
+                // m4.rotateX(i),
             ]);
 
             if (engine.properties['freezePhysics'] !== true) props.b -= rads(1);
-
-            engine.debug(`${degs(props.a)} [a]`);
+            props.a += rads(0.1);
+            engine.debug(`${degs(props.a)} [props.a]`);
 
             // console.log({ i, rightAscensionNode, argumentOfPeriapsis });
 
             // TODO: idk if this is right
             let fociX = -semiMajorAxis * e;
-            if (argumentOfPeriapsis < rads(90)) {
-                fociX += center[0];
-            } else {
-                fociX -= center[0];
-            }
+            // if (argumentOfPeriapsis < rads(90)) {
+            //     fociX += center[0];
+            // } else {
+            //     fociX -= center[0];
+            // }
 
             const rotation = getAnglesFromMatrix(matrix);
             const rotation2 = getAnglesFromMatrix2(matrix);
 
             // console.log({ rotation, rotation2 });
 
-            orbit.rotation = rotation2;
+            orbit.additionalMatrix = matrix;
             orbit.offsets = [fociX, -center[1], -center[2]];
         }
 

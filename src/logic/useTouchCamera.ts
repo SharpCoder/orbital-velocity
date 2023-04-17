@@ -20,7 +20,7 @@ let rx = 0, // rotateX
     sy = 0, // startY
     wx = 0, // windowX
     wy = 0, // windowY
-    zoom = 2000,
+    zoom = 2700,
     init = false,
     mode: CameraMode = 'initializing';
 
