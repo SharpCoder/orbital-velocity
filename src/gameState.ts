@@ -16,8 +16,9 @@ export type Maneuver = {
 
 class GameState {
     activeScene: string;
-    public listeners: Array<() => void>;
-    public universe: {
+    listeners: Array<() => void>;
+    deltaV: number;
+    universe: {
         showDeltaV: boolean;
         showHUD: boolean;
         current: {
@@ -25,7 +26,7 @@ class GameState {
             velocity: [number, number, number];
             maneuver: {
                 theta: number;
-            };
+            } & Omit<Omit<Maneuver, 'position'>, 'velocity'>;
         };
         maneuvers: Maneuver[];
         freezePhysicsEngine: boolean;
@@ -35,6 +36,7 @@ class GameState {
     constructor() {
         this.activeScene = 'universe';
         this.listeners = [];
+        this.deltaV = 1000;
         this.universe = {
             showDeltaV: true,
             showHUD: true,
@@ -43,6 +45,9 @@ class GameState {
                 velocity: [0, 0, 0],
                 maneuver: {
                     theta: 0,
+                    executeAt: 0,
+                    prograde: 0,
+                    phase: 0,
                 },
             },
             freezePhysicsEngine: true,

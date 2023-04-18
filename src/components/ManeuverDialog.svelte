@@ -1,14 +1,15 @@
 <script lang="ts">
     import Slider from '@smui/slider';
-    import gameState from '../gameState';
+    import gameState, { type Maneuver } from '../gameState';
     import { onMount } from 'svelte';
 
     import type { Engine } from 'webgl-engine';
     import type { EngineProperties } from '../types';
 
     export let visible = true;
+
     let prograde = 0;
-    let across = 0;
+    let phase = 0;
     let show = true;
 
     onMount(() => {
@@ -18,18 +19,13 @@
     });
 
     $: {
-        const engine = window['gameEngine'] as Engine<EngineProperties>;
-        if (engine) {
-            engine.properties.orbit = {
-                prograde,
-                across,
-            };
-        }
+        gameState.universe.current.maneuver.prograde = prograde;
+        gameState.universe.current.maneuver.phase = phase;
     }
 
     function reset() {
         prograde = 0;
-        across = 0;
+        phase = 0;
     }
 </script>
 
@@ -44,8 +40,8 @@
                     </div>
                     <Slider
                         style="flex-grow: 1; width: 100%;"
-                        min={-100}
-                        max={100}
+                        min={-gameState.deltaV}
+                        max={gameState.deltaV}
                         bind:value={prograde}
                     />
                 </div>
@@ -53,9 +49,9 @@
                     Phase Shift
                     <Slider
                         style="flex-grow: 1; width: 100%;"
-                        min={-100}
-                        max={100}
-                        bind:value={across}
+                        min={-gameState.deltaV}
+                        max={gameState.deltaV}
+                        bind:value={phase}
                     />
                 </div>
                 <button class="btn-reset" on:click={reset}>Reset</button>
