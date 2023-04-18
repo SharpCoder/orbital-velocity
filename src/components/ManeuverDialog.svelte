@@ -25,6 +25,10 @@
     function reset() {
         prograde = 0;
         phase = 0;
+
+        if (gameState.universe.current.maneuver) {
+            gameState.universe.current.maneuver.active = false;
+        }
     }
 </script>
 

@@ -89,19 +89,16 @@ export function drawManeuverNode(
                 maneuverCube.transparent = false;
                 container.transparent = false;
             }
-
-            // Hosit the orbit angle up
-            mouseAngle = normalize(
-                -mouseAngle - rightAscensionNode,
-                0,
-                2 * Math.PI
-            );
-
-            container.properties = {
-                orbitAngle: mouseAngle,
-            };
         }
 
+        // Hosit the information up
+        container.properties = {
+            targetPosition: [
+                maneuverCube._bbox.x,
+                maneuverCube._bbox.y,
+                maneuverCube._bbox.z,
+            ],
+        };
         originalUpdate && originalUpdate.call(this, time_t, engine);
     };
 

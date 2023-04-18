@@ -19,14 +19,14 @@ import {
     type ParsedModel,
 } from 'webgl-engine';
 import { pink, purple, sage, yellow } from '../colors';
-import { lineTo, lineToPositionAndRotation } from '../drawing';
+import { drawCube, lineTo, lineToPositionAndRotation } from '../drawing';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { EllipseCalculator } from '../math/ellipse';
 import type { Body, PhysicsEngine } from '../math/physics';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
-import gameState from '../gameState';
+import gameState, { type Maneuver } from '../gameState';
 import { createUniverse } from '../mapgen';
 import { drawOrbit } from '../objects/orbit';
 import { drawManeuverNode } from '../objects/maneuverNode';
@@ -155,6 +155,11 @@ export const UniverseScene = new Scene<EngineProperties>({
         const { physicsEngine } = gameState.universe;
         if (gameState.universe.freezePhysicsEngine !== true) {
             physicsEngine.update(dt);
+
+            if (player) {
+                gameState.setPosition(player.position);
+                gameState.setVelocity(player.velocity);
+            }
         }
     },
     onMouseUp: (engine) => {
@@ -165,23 +170,38 @@ export const UniverseScene = new Scene<EngineProperties>({
 
             // Estimate time_t to intercept
             if (player) {
+                const { targetPosition } = orbitalManeuverNode.properties;
                 const params = physicsEngine.keplerianParameters(player);
-                let time =
-                    degs(orbitAngle - params.nu) * (params.orbitalPeriod / 360);
+                const steps = physicsEngine.propogate(
+                    player,
+                    dt,
+                    params.orbitalPeriod
+                );
 
-                if (time < 0) {
-                    time = params.orbitalPeriod - time;
+                console.log({ targetPosition });
+
+                // Find the closest position
+                let bestDistance = Number.MAX_VALUE;
+                let bestNode: Body;
+
+                for (const step of steps) {
+                    const dist = Math.sqrt(
+                        Math.pow(step.position[0] - targetPosition[0], 2) +
+                            Math.pow(step.position[1] - targetPosition[1], 2) +
+                            Math.pow(step.position[2] - targetPosition[2], 2)
+                    );
+
+                    if (bestDistance > dist) {
+                        bestDistance = dist;
+                        bestNode = step;
+                    }
                 }
 
-                console.log({
-                    time,
-                    raan: degs(params.rightAscensionNode),
-                    orbitAngle: degs(orbitAngle),
-                    nu: degs(params.nu),
-                    position: player.position,
-                    velocity: player.velocity,
-                    diff: degs(orbitAngle - params.nu),
-                });
+                if (bestNode) {
+                    console.log({ bestNode });
+                    for (let j = 0; j < 3; j++) bestNode.velocity[j] += 0.1;
+                    addManeuver(bestNode, physicsEngine);
+                }
             }
 
             // alert('hello');
@@ -191,14 +211,27 @@ export const UniverseScene = new Scene<EngineProperties>({
 });
 
 const orbits = [];
-function addManeuver(
-    player: Body,
-    physicsEngine: PhysicsEngine,
-    executeAt: number
-) {
+function addManeuver(player: Body, physicsEngine: PhysicsEngine) {
     const orbitingBody = physicsEngine.findOrbitingBody(player);
     const colors = [sage, yellow, pink, purple];
     const colorIdx = orbits.length % (colors.length - 1);
+    const maneuverPlan: Maneuver = {
+        active: true,
+        phase: 0,
+        position: [...player.position],
+        prograde: 0,
+        velocity: player.velocity,
+    };
+
+    gameState.setManeuver(maneuverPlan);
+
+    gameState.setShowDeltaV(true);
+    const maneuverCube = drawCube({
+        position: player.position,
+        size: [50, 50, 50],
+    });
+
+    UniverseScene.addObject(maneuverCube);
 
     const maneuverOrbit = drawOrbit(
         player.position,
@@ -207,16 +240,74 @@ function addManeuver(
         orbitingBody.mass + player.mass,
         {
             color: colors[colorIdx],
+        },
+        {
+            properties: { maneuverCube },
+            update: (time_t, engine) => {
+                const { prograde, phase } = gameState.universe.current.maneuver;
+
+                // Check if this maneuver is still active.
+                if (maneuverPlan.active === false) {
+                    // Destroy!!!!
+                    gameState.setShowDeltaV(false);
+                    gameState.clearManeuver();
+                    UniverseScene.removeObject(maneuverCube);
+                    UniverseScene.removeObject(maneuverOrbit);
+                    if (orbits.includes(maneuverOrbit)) {
+                        orbits.splice(orbits.indexOf(maneuverOrbit), 1);
+                    }
+                } else {
+                    // Calculate the new orbit
+                    const accel = 0.5;
+
+                    // Calculate the gravity field
+                    const gravityField = player._forces.reduce(
+                        (acc, cur) => {
+                            acc[0] += cur[0];
+                            acc[1] += cur[1];
+                            acc[2] += cur[2];
+                            return acc;
+                        },
+                        [0, 0, 0]
+                    );
+
+                    const unit = [...player.velocity]; //.map((u, i) => u - gravityField[i]);
+                    const mag = norm(unit);
+
+                    const vx = accel * (unit[0] / mag);
+                    const vy = accel * (unit[1] / mag);
+                    const vz = accel * (unit[2] / mag);
+
+                    const v2 = m4.cross(
+                        unit.map((v, i) => gravityField[i]),
+                        unit.map((v) => v)
+                    );
+                    const v2norm = norm(v2);
+
+                    let dvx = vx * prograde + phase * accel * (v2[0] / v2norm);
+                    let dvy = vy * prograde + phase * accel * (v2[1] / v2norm);
+                    let dvz = vz * prograde + phase * accel * (v2[2] / v2norm);
+
+                    const maneuverPosition = [...player.position];
+                    const maneuverVelocity = [
+                        player.velocity[0] + dvx,
+                        player.velocity[1] + dvy,
+                        player.velocity[2] + dvz,
+                    ];
+
+                    maneuverOrbit.recalculateOrbit(
+                        [...maneuverPosition],
+                        [...maneuverVelocity],
+                        [...orbitingBody.position],
+                        orbitingBody.mass + player.mass
+                    );
+                }
+            },
         }
     );
 
-    orbits.push({ executeAt, obj: maneuverOrbit });
+    orbits.push(maneuverOrbit);
     UniverseScene.addObject(maneuverOrbit);
-}
-
-function removeManeuver(executeAt: number) {
-    const target = orbits.find((orbit) => orbit.executeAt === executeAt);
-    UniverseScene.removeObject(target);
 }
 
 function updatePlayer(

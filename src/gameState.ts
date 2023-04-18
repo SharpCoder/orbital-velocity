@@ -3,6 +3,7 @@ import type { Engine } from 'webgl-engine';
 import { PhysicsEngine } from './math/physics';
 
 export type Maneuver = {
+    active: boolean;
     /** Position of the satellite at execution time */
     position: [number, number, number];
     /** Velocity of the satellite at execution time */
@@ -11,8 +12,6 @@ export type Maneuver = {
     prograde: number;
     /** Phase velocity */
     phase: number;
-    /** The physicsEngine time which this maneuver should be executed */
-    executeAt: number;
 };
 
 class GameState {
@@ -39,7 +38,7 @@ class GameState {
         this.listeners = [];
         this.deltaV = 100;
         this.universe = {
-            showDeltaV: true,
+            showDeltaV: false,
             showHUD: true,
             current: {
                 position: [0, 0, 0],
