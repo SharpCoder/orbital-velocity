@@ -12,7 +12,7 @@ export function drawManeuverNode(
     const container = createContainer(containerProps);
 
     // Create the plane
-    const maneuverCubeSize = 20;
+    const maneuverCubeSize = 35;
     const maneuverCube = drawCube({
         position: zeros(),
         size: [maneuverCubeSize, maneuverCubeSize, maneuverCubeSize],
@@ -35,15 +35,15 @@ export function drawManeuverNode(
         const { e, center, semiMajorAxis, semiMinorAxis } =
             physicsEngine.keplerianParameters(body);
 
-        const bboxW = orbitalPlane._bbox?.w ?? 0;
-        const centerX = (orbitalPlane._bbox?.x ?? 0) - bboxW;
+        const mouse_x = engine.properties['mouse_x'] ?? 0;
+        const mouse_z = engine.properties['mouse_z'] ?? 0;
 
-        const mouse_x = (engine.properties['mouse_x'] ?? 0) / planePadding;
-        const mouse_z = (engine.properties['mouse_z'] ?? 0) / planePadding;
-
-        const mx = mouse_x * planePadding;
-        const mz = mouse_z * planePadding;
-        const y = semiMinorAxis * (0.5 - mz);
+        const w = semiMajorAxis * 2 * planePadding;
+        const h = semiMinorAxis * 2 * planePadding;
+        const ratioY = w / h;
+        const mx = mouse_x;
+        const mz = mouse_z;
+        const y = semiMinorAxis * (0.5 - mz) * ratioY;
         const x = semiMajorAxis * (mx - 0.5);
         const mouseAngle = Math.atan2(y, x);
 
@@ -54,8 +54,6 @@ export function drawManeuverNode(
         ];
 
         // Render the orbital plane
-        const w = semiMajorAxis * 2 * planePadding;
-        const h = semiMinorAxis * 2 * planePadding;
         orbitalPlane.vertexes = cuboid(w, 1, h);
         orbitalPlane.offsets = [-w / 2, 0.5, -h / 2];
 
@@ -63,20 +61,24 @@ export function drawManeuverNode(
         const orbitalZ = orbitalPlane.position[2];
         const normalizedCubeX = maneuverCube.position[0] - orbitalX;
         const normalizedCubeZ = maneuverCube.position[2] - orbitalZ;
+        const mouseRealX = (mx - 0.5) * w;
+        const mouseRealY = (0.5 - mz) * h;
 
         // Compute the distance
         const dist = Math.sqrt(
-            Math.pow(normalizedCubeX - x * 2, 2) +
-                Math.pow(normalizedCubeZ - y * 2, 2)
+            Math.pow(normalizedCubeX - mouseRealX, 2) +
+                Math.pow(normalizedCubeZ - mouseRealY, 2)
         );
 
-        if (dist > 200) {
+        if (dist > 175) {
             maneuverCube.transparent = true;
             container.transparent = true;
         } else {
             maneuverCube.transparent = false;
             container.transparent = false;
         }
+
+        engine.debug(`${r(dist)} dist`);
 
         originalUpdate && originalUpdate.call(this, time_t, engine);
     };

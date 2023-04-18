@@ -35,9 +35,9 @@ import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
 
 const physicsEngine = new PhysicsEngine();
-const offsetX = -1000;
-const offsetY = -1000;
-const offsetZ = -1000;
+const offsetX = 1000;
+const offsetY = 1000;
+const offsetZ = 10000;
 
 const Sun = physicsEngine.addBody({
     position: [offsetX, offsetY, offsetZ],
@@ -53,7 +53,7 @@ const Satellite = physicsEngine.addBody({
 
 let dt = 0.1;
 const cubeSize = 25;
-const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
+const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 2.1);
 const orbit = drawOrbit(
     Satellite.position,
     Satellite.velocity,
