@@ -150,31 +150,6 @@ export class PhysicsEngine {
         return [state_vec, masses];
     }
 
-    project(dt: number, duration: number, originalBody: Body): Body {
-        const body: Body = {
-            _forces: [...originalBody._forces],
-            internalId: originalBody.internalId,
-            mass: originalBody.mass,
-            position: [...originalBody.position],
-            velocity: [...originalBody.velocity],
-            disabled: originalBody.disabled,
-            fixed: originalBody.fixed,
-        };
-
-        // Save the force multiplier relative to each other body
-        for (let t = 0; t < duration; t += dt) {
-            let [state_vec, masses] = this.create_state_vec(body);
-            const midpoint = state_vec.length / 2;
-            const next_state = rk4iter(this.solve, [...state_vec], masses, dt);
-            for (let j = 0; j < 3; j++) {
-                body.position[j] = next_state[0 + j];
-                body.velocity[j] = next_state[midpoint + j];
-            }
-        }
-
-        return body;
-    }
-
     /** For each body, compute its updated position based on the effects of physics */
     update(dt: number) {
         const bodies = this.enabled_bodies();

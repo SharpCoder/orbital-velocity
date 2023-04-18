@@ -133,7 +133,6 @@ export function drawOrbit(
             // Rotate ourself
             const matrix = m4.combine([
                 m4.identity(),
-
                 m4.rotateX(rads(90)),
                 m4.rotateY(-rightAscensionNode),
                 m4.rotateX(i),
@@ -142,11 +141,23 @@ export function drawOrbit(
 
             // TODO: idk if this is right
             let fociX = -semiMajorAxis * e;
-            const rotation = getAnglesFromMatrix(matrix);
-            const rotation2 = getAnglesFromMatrix2(matrix);
 
+            // This fixes the orbit when it is in locations
+            // other than 0,0,0
+            const matrixPosition = m4.combine([
+                m4.translate(center[0], center[1], center[2]),
+                matrix,
+            ]);
+
+            const orbitPosition = [
+                matrixPosition[12],
+                matrixPosition[13],
+                matrixPosition[14],
+            ];
+
+            orbit.position = orbitPosition;
             orbit.additionalMatrix = matrix;
-            orbit.offsets = [fociX, -center[1], -center[2]];
+            orbit.offsets = [fociX, 0, 0];
         }
 
         originalUpdate && originalUpdate.call(this, time_t, engine);

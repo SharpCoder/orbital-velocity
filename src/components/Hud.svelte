@@ -79,8 +79,10 @@
     }
 
     .readout {
-        color: white;
-        line-height: 1.5rem;
+        font-family: var(--font);
+        color: rgba(99, 245, 66, 0.5);
+        font-size: 1.25rem;
+        line-height: 2rem;
         -webkit-user-select: none; /* Safari */
         -ms-user-select: none; /* IE 10 and IE 11 */
         user-select: none; /* Standard syntax */

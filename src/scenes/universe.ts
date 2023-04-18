@@ -35,20 +35,23 @@ import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
 
 const physicsEngine = new PhysicsEngine();
+const offsetX = -1000;
+const offsetY = -1000;
+const offsetZ = -1000;
 
 const Sun = physicsEngine.addBody({
-    position: [0, 0, 0],
+    position: [offsetX, offsetY, offsetZ],
     velocity: [0, 0, 0],
     mass: 1e26,
 });
 
 const Satellite = physicsEngine.addBody({
-    position: [1500, 0, 500],
-    velocity: [0, 20, 40],
+    position: [offsetX + 1500, offsetY - 50, offsetZ - 500],
+    velocity: [0, 30, 40],
     mass: 1,
 });
 
-let dt = 0.5;
+let dt = 0.1;
 const cubeSize = 25;
 const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 1.1);
 const orbit = drawOrbit(
@@ -106,15 +109,15 @@ export const UniverseScene = new Scene<EngineProperties>({
     init: (engine) => {
         const { camera } = UniverseScene;
         engine.settings.fogColor = [0, 0, 0, 1];
-
         // Start with physics frozen
         engine.properties.freezePhysics = true;
-
         camera.rotation[0] = rads(18);
         camera.rotation[1] = -rads(235);
         camera.rotation[2] = originalOrbitalElements.e;
-
         camera.position = [...Sun.position];
+
+        // Initial propagation
+        physicsEngine.update(dt);
     },
     update: (time, engine) => {
         const { prograde, across } = engine.properties.orbit;
@@ -242,17 +245,14 @@ fetch('models/ball.obj')
                 const params = physicsEngine.keplerianParameters(Satellite);
 
                 const readoutLines = [
-                    `c: ${engine.activeScene.camera.rotation
-                        .map((d) => r(degs(d)))
-                        .join(', ')}`,
-                    `orbital period: ${r(params.orbitalPeriod)}`,
-                    `rightAscensionNode: ${r(degs(params.rightAscensionNode))}`,
-                    `argumentOfPeriapsis: ${r(
-                        degs(params.argumentOfPeriapsis)
-                    )}`,
+                    // `c: ${engine.activeScene.camera.rotation
+                    //     .map((d) => r(degs(d)))
+                    //     .join(', ')}`,
+                    `Ω: ${r(degs(params.rightAscensionNode))}`,
+                    `ω: ${r(degs(params.argumentOfPeriapsis))}`,
                     `e: ${r(params.e)}`,
-                    `inclination: ${r(degs(params.i))}`,
-                    `velocity <${r(Satellite.velocity[0])}, ${r(
+                    `i: ${r(degs(params.i))}`,
+                    `v <${r(Satellite.velocity[0])}, ${r(
                         Satellite.velocity[1]
                     )}, ${r(Satellite.velocity[2])}>`,
                 ];
