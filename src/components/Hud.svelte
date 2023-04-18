@@ -2,16 +2,22 @@
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
     import type { EngineProperties } from '../types';
+    import gameState from '../gameState';
 
     const engine = window['gameEngine'] as Engine<EngineProperties>;
     let readoutEl;
     let timeText = 'Resume';
+    let show = true;
 
     onMount(() => {
         setInterval(() => {
             if (engine && readoutEl) {
                 readoutEl.innerText = engine.properties['readout'] ?? '';
             }
+
+            show =
+                gameState.activeScene === 'universe' &&
+                gameState.universe.showHUD;
         }, 40);
     });
 
@@ -28,14 +34,16 @@
     }
 </script>
 
-<div class="hud">
-    <div class="item-space">
-        <div class="readout" bind:this={readoutEl} />
-        <div class="physics-space">
-            <button on:click={handleToggleTime}>{timeText}</button>
+{#if show}
+    <div class="hud">
+        <div class="item-space">
+            <div class="readout" bind:this={readoutEl} />
+            <div class="physics-space">
+                <button on:click={handleToggleTime}>{timeText}</button>
+            </div>
         </div>
     </div>
-</div>
+{/if}
 
 <style>
     .hud {

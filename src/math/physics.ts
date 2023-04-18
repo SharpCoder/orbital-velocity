@@ -25,8 +25,10 @@ export type Body = {
 export class PhysicsEngine {
     bodies: Body[];
     state: StateVector;
+    elapsed: number;
 
     constructor() {
+        this.elapsed = 0;
         this.bodies = [];
     }
 
@@ -123,7 +125,7 @@ export class PhysicsEngine {
 
         const other = this.orbitingBody(body);
         const masses = body.mass + other.mass;
-        const center = other.position;
+        const center = [...other.position];
 
         return keplerianParameters(position, velocity, center, masses);
     }
@@ -153,6 +155,7 @@ export class PhysicsEngine {
     /** For each body, compute its updated position based on the effects of physics */
     update(dt: number) {
         const bodies = this.enabled_bodies();
+        this.elapsed += dt;
 
         for (let i = 0; i < bodies.length; i++) {
             if (bodies[i].fixed) continue;
@@ -163,7 +166,7 @@ export class PhysicsEngine {
             const midpoint = next_state.length / 2;
 
             // Save the force multiplier relative to each other body
-            for (let k = 0; k < bodies.length - 1; k++) {
+            for (let k = 0; k < bodies.length; k++) {
                 const other = bodies[k];
                 const unit = [
                     other.position[0] - target.position[0],
@@ -175,6 +178,11 @@ export class PhysicsEngine {
                 for (let j = 0; j < 3; j++) {
                     target._forces[k][j] =
                         (other.mass * G * unit[j]) / Math.pow(mag, 3);
+
+                    // Handle forces with thyself
+                    if (isNaN(target._forces[k][j])) {
+                        target._forces[k][j] = 0;
+                    }
                 }
             }
 
@@ -224,8 +232,6 @@ export function keplerianParameters(
     }
 
     const e = norm(e_vec);
-    // console.log(1 + (2 * E * Math.pow(h, 2)) / Math.pow(mu, 2));
-    // console.log(e);
 
     let nu_r_vec = [...shadowPosition];
     let nu_e_vec = [...e_vec];

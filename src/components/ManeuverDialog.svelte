@@ -1,11 +1,21 @@
 <script lang="ts">
     import Slider from '@smui/slider';
+    import gameState from '../gameState';
+    import { onMount } from 'svelte';
+
     import type { Engine } from 'webgl-engine';
     import type { EngineProperties } from '../types';
 
     export let visible = true;
     let prograde = 0;
     let across = 0;
+    let show = true;
+
+    onMount(() => {
+        gameState.addListener(() => {
+            show = gameState.universe.showDeltaV;
+        });
+    });
 
     $: {
         const engine = window['gameEngine'] as Engine<EngineProperties>;
@@ -23,34 +33,36 @@
     }
 </script>
 
-<div class="modal-container">
-    <div class="modal">
-        <div class="modal-title">&Delta;v</div>
-        <div class="modal-body">
-            <div class="option">
-                <div class="label">
-                    Retrograde <span class="spacer" /> Prograde
+{#if show}
+    <div class="modal-container">
+        <div class="modal">
+            <div class="modal-title">&Delta;v</div>
+            <div class="modal-body">
+                <div class="option">
+                    <div class="label">
+                        Retrograde <span class="spacer" /> Prograde
+                    </div>
+                    <Slider
+                        style="flex-grow: 1; width: 100%;"
+                        min={-100}
+                        max={100}
+                        bind:value={prograde}
+                    />
                 </div>
-                <Slider
-                    style="flex-grow: 1; width: 100%;"
-                    min={-100}
-                    max={100}
-                    bind:value={prograde}
-                />
+                <div class="option">
+                    Phase Shift
+                    <Slider
+                        style="flex-grow: 1; width: 100%;"
+                        min={-100}
+                        max={100}
+                        bind:value={across}
+                    />
+                </div>
+                <button class="btn-reset" on:click={reset}>Reset</button>
             </div>
-            <div class="option">
-                Phase Shift
-                <Slider
-                    style="flex-grow: 1; width: 100%;"
-                    min={-100}
-                    max={100}
-                    bind:value={across}
-                />
-            </div>
-            <button class="btn-reset" on:click={reset}>Reset</button>
         </div>
     </div>
-</div>
+{/if}
 
 <style type="text/css">
     .label {

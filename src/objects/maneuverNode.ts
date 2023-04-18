@@ -70,7 +70,7 @@ export function drawManeuverNode(
                 Math.pow(normalizedCubeZ - mouseRealY, 2)
         );
 
-        if (dist > 175) {
+        if (dist > 150) {
             maneuverCube.transparent = true;
             container.transparent = true;
         } else {

@@ -39,7 +39,7 @@ const offsetX = 1000;
 const offsetY = 1000;
 const offsetZ = 10000;
 
-const Sun = physicsEngine.addBody({
+const Planet = physicsEngine.addBody({
     position: [offsetX, offsetY, offsetZ],
     velocity: [0, 0, 0],
     mass: 1e26,
@@ -51,14 +51,20 @@ const Satellite = physicsEngine.addBody({
     mass: 1,
 });
 
+// const Sun = physicsEngine.addBody({
+//     position: [0, 0, 0],
+//     velocity: [0, 0, 0],
+//     mass: 1e26,
+// });
+
 let dt = 0.1;
 const cubeSize = 25;
 const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 2.1);
 const orbit = drawOrbit(
     Satellite.position,
     Satellite.velocity,
-    Sun.position,
-    Sun.mass + Satellite.mass,
+    Planet.position,
+    Planet.mass + Satellite.mass,
     {
         color: purple,
     },
@@ -70,8 +76,8 @@ const orbit = drawOrbit(
 const maneuverOrbit = drawOrbit(
     Satellite.position,
     Satellite.velocity,
-    Sun.position,
-    Sun.mass + Satellite.mass,
+    Planet.position,
+    Planet.mass + Satellite.mass,
     {
         color: sage,
     }
@@ -99,8 +105,8 @@ for (let i = 0; i < baselinePositions.length - 1; i++) {
 const originalOrbitalElements = keplerianParameters(
     Satellite.position,
     Satellite.velocity,
-    Sun.position,
-    Sun.mass
+    Planet.position,
+    Planet.mass
 );
 
 export const UniverseScene = new Scene<EngineProperties>({
@@ -114,13 +120,16 @@ export const UniverseScene = new Scene<EngineProperties>({
         camera.rotation[0] = rads(18);
         camera.rotation[1] = -rads(235);
         camera.rotation[2] = originalOrbitalElements.e;
-        camera.position = [...Sun.position];
+        camera.position = [...Planet.position];
 
         // Initial propagation
         physicsEngine.update(dt);
     },
     update: (time, engine) => {
+        const { camera } = engine.activeScene;
         const { prograde, across } = engine.properties.orbit;
+
+        camera.position = Planet.position;
 
         useTouchCamera(engine);
 
@@ -169,15 +178,15 @@ export const UniverseScene = new Scene<EngineProperties>({
         maneuverOrbit.recalculateOrbit(
             [...maneuverPosition],
             [...maneuverVelocity],
-            Sun.position,
-            Sun.mass + Satellite.mass
+            [...Planet.position],
+            Planet.mass + Satellite.mass
         );
 
         orbit.recalculateOrbit(
             Satellite.position,
             Satellite.velocity,
-            Sun.position,
-            Sun.mass + Satellite.mass
+            [...Planet.position],
+            Planet.mass + Satellite.mass
         );
     },
     onMouseUp: (engine) => {
@@ -213,9 +222,9 @@ fetch('models/ball.obj')
             return p / size;
         });
 
-        const TheSun: Obj3d = {
+        const ThePlanet: Obj3d = {
             vertexes: vertexes,
-            position: Sun.position,
+            position: Planet.position,
             offsets: zeros(),
             scale: [scale, scale, scale],
             rotation: zeros(),
@@ -223,12 +232,12 @@ fetch('models/ball.obj')
                 Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
             ),
             update: function (t, engine) {
-                this.position = Sun.position;
+                this.position = Planet.position;
                 this.offsets = [-scale / 2, -scale / 2, -scale / 2];
             },
         };
 
-        UniverseScene.addObject(TheSun);
+        UniverseScene.addObject(ThePlanet);
 
         UniverseScene.addObject({
             ...obj,
