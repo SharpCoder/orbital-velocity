@@ -16,13 +16,13 @@ export type UniverseSimulation = {
     physicsEngine: PhysicsEngine;
 };
 
-function generate(seed): UniverseSimulation {
+export function createUniverse(seed): UniverseSimulation {
     const prng = new XORShift(seed);
 
     // For the initial implementation, we will actually just hardcode everything.
     const physicsEngine = new PhysicsEngine();
     const player = physicsEngine.addBody({
-        position: [1500, 0, 0],
+        position: [1500, -50, -500],
         velocity: [0, 30, 40],
         mass: 1,
     });

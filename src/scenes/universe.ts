@@ -16,56 +16,29 @@ import {
     Vec3,
     zeros,
     type Obj3d,
+    type ParsedModel,
 } from 'webgl-engine';
 import { pink, purple, sage, yellow } from '../colors';
 import { lineTo, lineToPositionAndRotation } from '../drawing';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { EllipseCalculator } from '../math/ellipse';
-import {
-    G,
-    keplerianParameters,
-    PhysicsEngine,
-    type Body,
-} from '../math/physics';
-import { createContainer } from '../objects/container';
-import { drawManeuverNode } from '../objects/maneuverNode';
-import { drawOrbit } from '../objects/orbit';
+import type { Body, PhysicsEngine } from '../math/physics';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
 import gameState from '../gameState';
-
-const physicsEngine = new PhysicsEngine();
-const offsetX = 1000;
-const offsetY = 1000;
-const offsetZ = 10000;
-
-const Planet = physicsEngine.addBody({
-    position: [offsetX, offsetY, offsetZ],
-    velocity: [0, 0, 0],
-    mass: 1e26,
-});
-
-const Satellite = physicsEngine.addBody({
-    position: [offsetX + 1500, offsetY - 50, offsetZ - 500],
-    velocity: [0, 30, 40],
-    mass: 1,
-});
-
-// const Sun = physicsEngine.addBody({
-//     position: [0, 0, 0],
-//     velocity: [0, 0, 0],
-//     mass: 1e26,
-// });
+import { createUniverse } from '../mapgen';
+import { drawOrbit } from '../objects/orbit';
+import { drawManeuverNode } from '../objects/maneuverNode';
 
 let dt = 0.1;
-const cubeSize = 25;
-const orbitalManeuverNode = drawManeuverNode(physicsEngine, Satellite, 2.1);
+let player: Body;
+const orbitalManeuverNode = drawManeuverNode(1.5);
 const orbit = drawOrbit(
-    Satellite.position,
-    Satellite.velocity,
-    Planet.position,
-    Planet.mass + Satellite.mass,
+    zeros(),
+    zeros(),
+    zeros(),
+    0,
     {
         color: purple,
     },
@@ -74,41 +47,26 @@ const orbit = drawOrbit(
     }
 );
 
-const maneuverOrbit = drawOrbit(
-    Satellite.position,
-    Satellite.velocity,
-    Planet.position,
-    Planet.mass + Satellite.mass,
-    {
-        color: sage,
+async function loadModels(): Promise<Record<string, ParsedModel>> {
+    const result = {};
+    const promises = [];
+    const models = {
+        world: 'models/ball.obj',
+    };
+
+    for (const model in models) {
+        promises.push(
+            fetch(models[model])
+                .then((file) => file.blob())
+                .then(async (blob) => {
+                    result[model] = await loadModel(blob, 'obj', true);
+                })
+        );
     }
-);
 
-// Draw a baseline ellipse
-const baselineOrbit = createContainer({});
-const baselinePositions = EllipseCalculator.compute({
-    semiMajorAxis: 1050,
-    semiMinorAxis: 1050,
-});
-for (let i = 0; i < baselinePositions.length - 1; i++) {
-    const from = [baselinePositions[i][0], 0, baselinePositions[i][1]];
-    const to = [baselinePositions[i + 1][0], 0, baselinePositions[i + 1][1]];
-    const segment = lineTo({
-        from: from,
-        to: to,
-        thickness: 5,
-        sides: 4,
-        color: [255, 255, 255],
-    });
-    baselineOrbit.children.push(segment);
+    await Promise.all(promises);
+    return Promise.resolve(result);
 }
-
-const originalOrbitalElements = keplerianParameters(
-    Satellite.position,
-    Satellite.velocity,
-    Planet.position,
-    Planet.mass
-);
 
 export const UniverseScene = new Scene<EngineProperties>({
     title: 'universe',
@@ -120,159 +78,215 @@ export const UniverseScene = new Scene<EngineProperties>({
         engine.properties.freezePhysics = true;
         camera.rotation[0] = rads(18);
         camera.rotation[1] = -rads(235);
-        camera.rotation[2] = originalOrbitalElements.e;
-        camera.position = [...Planet.position];
 
         // Setup the default universe
+        const universe = createUniverse(1337);
+        const { physicsEngine } = universe;
+
+        gameState.setPhysicsEngine(physicsEngine);
+
+        // Fetch the models
+        loadModels().then((models) => {
+            for (const obj of universe.objects) {
+                const phys = obj.body;
+                switch (obj.type) {
+                    case 'planet': {
+                        UniverseScene.addObject({
+                            ...models['world'],
+                            position: phys.position,
+                            offsets: zeros(),
+                            scale: [100, 100, 100],
+                            rotation: zeros(),
+                            colors: Flatten(
+                                Repeat(
+                                    Vec3(255, 255, 255),
+                                    models['world'].vertexes.length / 3
+                                )
+                            ),
+                        });
+                        break;
+                    }
+
+                    case 'player': {
+                        player = phys;
+                        camera.position = { ...phys.position };
+                        UniverseScene.addObject({
+                            ...models['world'],
+                            position: phys.position,
+                            offsets: zeros(),
+                            scale: [50, 50, 50],
+                            rotation: zeros(),
+                            update: updatePlayer.bind(this, phys),
+                            colors: Flatten(
+                                Repeat(
+                                    Vec3(255, 255, 255),
+                                    models['world'].vertexes.length / 3
+                                )
+                            ),
+                        });
+                        break;
+                    }
+
+                    case 'sun': {
+                        UniverseScene.addObject({
+                            ...models['world'],
+                            position: phys.position,
+                            offsets: zeros(),
+                            scale: [1000, 1000, 1000],
+                            rotation: zeros(),
+                            colors: Flatten(
+                                Repeat(
+                                    Vec3(255, 255, 255),
+                                    models['world'].vertexes.length / 3
+                                )
+                            ),
+                        });
+                        break;
+                    }
+                }
+            }
+        });
 
         // Initial propagation
+        orbitalManeuverNode.configure(physicsEngine, universe.player);
         physicsEngine.update(dt);
     },
     update: (time, engine) => {
-        const { camera } = engine.activeScene;
-        const { prograde, phase } = gameState.universe.current.maneuver;
-
-        camera.position = Planet.position;
-
-        useTouchCamera(engine);
-
-        if (engine.properties.freezePhysics !== true) {
+        const { physicsEngine } = gameState.universe;
+        if (gameState.universe.freezePhysicsEngine !== true) {
             physicsEngine.update(dt);
         }
-
-        // Calculate the new orbit
-        const accel = 0.5;
-
-        // Calculate the gravity field
-        const gravityField = Satellite._forces.reduce(
-            (acc, cur) => {
-                acc[0] += cur[0];
-                acc[1] += cur[1];
-                acc[2] += cur[2];
-                return acc;
-            },
-            [0, 0, 0]
-        );
-
-        const unit = [...Satellite.velocity]; //.map((u, i) => u - gravityField[i]);
-        const mag = norm(unit);
-
-        const vx = accel * (unit[0] / mag);
-        const vy = accel * (unit[1] / mag);
-        const vz = accel * (unit[2] / mag);
-
-        const v2 = m4.cross(
-            unit.map((v, i) => gravityField[i]),
-            unit.map((v) => v)
-        );
-        const v2norm = norm(v2);
-
-        let dvx = vx * prograde + phase * accel * (v2[0] / v2norm);
-        let dvy = vy * prograde + phase * accel * (v2[1] / v2norm);
-        let dvz = vz * prograde + phase * accel * (v2[2] / v2norm);
-
-        const maneuverPosition = [...Satellite.position];
-        const maneuverVelocity = [
-            Satellite.velocity[0] + dvx,
-            Satellite.velocity[1] + dvy,
-            Satellite.velocity[2] + dvz,
-        ];
-
-        maneuverOrbit.recalculateOrbit(
-            [...maneuverPosition],
-            [...maneuverVelocity],
-            [...Planet.position],
-            Planet.mass + Satellite.mass
-        );
-
-        orbit.recalculateOrbit(
-            Satellite.position,
-            Satellite.velocity,
-            [...Planet.position],
-            Planet.mass + Satellite.mass
-        );
     },
     onMouseUp: (engine) => {
         const { mouseClickDuration } = engine;
         if (mouseClickDuration < 180 && !orbitalManeuverNode.transparent) {
+            const { physicsEngine } = gameState.universe;
+            const { orbitAngle } = orbitalManeuverNode.properties;
+
+            // Estimate time_t to intercept
+            if (player) {
+                const params = physicsEngine.keplerianParameters(player);
+                let time =
+                    degs(orbitAngle - params.nu) * (params.orbitalPeriod / 360);
+
+                if (time < 0) {
+                    time = params.orbitalPeriod - time;
+                }
+
+                console.log({
+                    time,
+                    raan: degs(params.rightAscensionNode),
+                    orbitAngle: degs(orbitAngle),
+                    nu: degs(params.nu),
+                    position: player.position,
+                    velocity: player.velocity,
+                    diff: degs(orbitAngle - params.nu),
+                });
+            }
+
             // alert('hello');
         }
     },
     status: 'initializing',
 });
 
-fetch('models/ball.obj')
-    .then((obj) => {
-        return obj.blob();
-    })
-    .then(async (moonModel) => {
-        const scale = 100;
-        const obj = await loadModel(moonModel, 'obj');
-        const sizes = obj.vertexes.reduce(
-            (a, b) => {
-                if (isNaN(b)) b = 0;
-                if (a[0] > b) a[0] = b;
-                if (a[1] < b) a[1] = b;
-                return a;
-            },
-            [Number.MAX_VALUE, -Number.MAX_VALUE]
-        );
+const orbits = [];
+function addManeuver(
+    player: Body,
+    physicsEngine: PhysicsEngine,
+    executeAt: number
+) {
+    const orbitingBody = physicsEngine.findOrbitingBody(player);
+    const colors = [sage, yellow, pink, purple];
+    const colorIdx = orbits.length % (colors.length - 1);
 
-        const size = sizes[1];
+    const maneuverOrbit = drawOrbit(
+        player.position,
+        player.velocity,
+        orbitingBody.position,
+        orbitingBody.mass + player.mass,
+        {
+            color: colors[colorIdx],
+        }
+    );
 
-        const vertexes = obj.vertexes.map((p) => {
-            if (isNaN(p)) p = 0;
-            return p / size;
-        });
+    orbits.push({ executeAt, obj: maneuverOrbit });
+    UniverseScene.addObject(maneuverOrbit);
+}
 
-        const ThePlanet: Obj3d = {
-            vertexes: vertexes,
-            position: Planet.position,
-            offsets: zeros(),
-            scale: [scale, scale, scale],
-            rotation: zeros(),
-            colors: Flatten(
-                Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
-            ),
-            update: function (t, engine) {
-                this.position = Planet.position;
-                this.offsets = [-scale / 2, -scale / 2, -scale / 2];
-            },
-        };
+function removeManeuver(executeAt: number) {
+    const target = orbits.find((orbit) => orbit.executeAt === executeAt);
+    UniverseScene.removeObject(target);
+}
 
-        UniverseScene.addObject(ThePlanet);
+function updatePlayer(
+    physicsBody: Body,
+    time_t: number,
+    engine: Engine<unknown>
+) {
+    useTouchCamera(engine);
 
-        UniverseScene.addObject({
-            ...obj,
-            position: zeros(),
-            offsets: zeros(),
-            rotation: zeros(),
-            scale: [cubeSize, cubeSize, cubeSize],
-            colors: Flatten(
-                Repeat(Vec3(255, 255, 255), obj.vertexes.length / 3)
-            ),
-            update: function (t, engine) {
-                this.position = Satellite.position;
-                this.offsets = [-cubeSize / 4, -cubeSize / 4, -cubeSize / 4];
-                const params = physicsEngine.keplerianParameters(Satellite);
+    const { physicsEngine } = gameState.universe;
+    const orbitingBody = physicsEngine.findOrbitingBody(physicsBody);
 
-                const readoutLines = [
-                    // `c: ${engine.activeScene.camera.rotation
-                    //     .map((d) => r(degs(d)))
-                    //     .join(', ')}`,
-                    `Ω: ${r(degs(params.rightAscensionNode))}`,
-                    `ω: ${r(degs(params.argumentOfPeriapsis))}`,
-                    `e: ${r(params.e)}`,
-                    `i: ${r(degs(params.i))}`,
-                    `v <${r(Satellite.velocity[0])}, ${r(
-                        Satellite.velocity[1]
-                    )}, ${r(Satellite.velocity[2])}>`,
-                ];
+    orbit.recalculateOrbit(
+        physicsBody.position,
+        physicsBody.velocity,
+        [...orbitingBody.position],
+        orbitingBody.mass + physicsBody.mass
+    );
 
-                engine.properties['readout'] = readoutLines.join('\n');
-            },
-        });
-    });
+    engine.debug(`${physicsEngine.elapsed} dt`);
+    /**
+     * This section is all about the maneuver node functionality?
+     * TODO: delegate somewhere else.
+     */
+    // const { prograde, phase } = gameState.universe.current.maneuver;
+
+    // // Calculate the new orbit
+    // const accel = 0.5;
+
+    // // Calculate the gravity field
+    // const gravityField = physicsBody._forces.reduce(
+    //     (acc, cur) => {
+    //         acc[0] += cur[0];
+    //         acc[1] += cur[1];
+    //         acc[2] += cur[2];
+    //         return acc;
+    //     },
+    //     [0, 0, 0]
+    // );
+
+    // const unit = [...physicsBody.velocity]; //.map((u, i) => u - gravityField[i]);
+    // const mag = norm(unit);
+
+    // const vx = accel * (unit[0] / mag);
+    // const vy = accel * (unit[1] / mag);
+    // const vz = accel * (unit[2] / mag);
+
+    // const v2 = m4.cross(
+    //     unit.map((v, i) => gravityField[i]),
+    //     unit.map((v) => v)
+    // );
+    // const v2norm = norm(v2);
+
+    // let dvx = vx * prograde + phase * accel * (v2[0] / v2norm);
+    // let dvy = vy * prograde + phase * accel * (v2[1] / v2norm);
+    // let dvz = vz * prograde + phase * accel * (v2[2] / v2norm);
+
+    // const maneuverPosition = [...physicsBody.position];
+    // const maneuverVelocity = [
+    //     physicsBody.velocity[0] + dvx,
+    //     physicsBody.velocity[1] + dvy,
+    //     physicsBody.velocity[2] + dvz,
+    // ];
+
+    // maneuverOrbit.recalculateOrbit(
+    //     [...maneuverPosition],
+    //     [...maneuverVelocity],
+    //     [...orbitingBody.position],
+    //     orbitingBody.mass + physicsBody.mass
+    // );
+}
 
 UniverseScene.addObject(orbit);
-UniverseScene.addObject(maneuverOrbit);

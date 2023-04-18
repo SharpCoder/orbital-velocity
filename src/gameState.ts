@@ -26,10 +26,7 @@ class GameState {
         current: {
             position: [number, number, number];
             velocity: [number, number, number];
-            maneuver: {
-                active: boolean;
-                theta: number;
-            } & Omit<Omit<Maneuver, 'position'>, 'velocity'>;
+            maneuver?: Maneuver;
         };
         maneuvers: Maneuver[];
         freezePhysicsEngine: boolean;
@@ -47,13 +44,7 @@ class GameState {
             current: {
                 position: [0, 0, 0],
                 velocity: [0, 0, 0],
-                maneuver: {
-                    active: true,
-                    theta: 0,
-                    executeAt: 0,
-                    prograde: 0,
-                    phase: 0,
-                },
+                maneuver: undefined,
             },
             freezePhysicsEngine: true,
             physicsEngine: new PhysicsEngine(),
@@ -117,9 +108,12 @@ class GameState {
         this.dispatch();
     }
 
-    setManeuverTheta(theta: number) {
-        this.universe.current.maneuver.theta = theta;
-        this.dispatch();
+    setManeuver(maneuver: Maneuver) {
+        this.universe.current.maneuver = maneuver;
+    }
+
+    clearManeuver() {
+        this.universe.current.maneuver = undefined;
     }
 
     setFreezePhysicsEngine(value: boolean) {

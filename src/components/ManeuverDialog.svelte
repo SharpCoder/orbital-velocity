@@ -3,9 +3,6 @@
     import gameState, { type Maneuver } from '../gameState';
     import { onMount } from 'svelte';
 
-    import type { Engine } from 'webgl-engine';
-    import type { EngineProperties } from '../types';
-
     export let visible = true;
 
     let prograde = 0;
@@ -19,8 +16,10 @@
     });
 
     $: {
-        gameState.universe.current.maneuver.prograde = prograde;
-        gameState.universe.current.maneuver.phase = phase;
+        if (gameState.universe.current.maneuver) {
+            gameState.universe.current.maneuver.prograde = prograde;
+            gameState.universe.current.maneuver.phase = phase;
+        }
     }
 
     function reset() {

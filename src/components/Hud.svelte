@@ -24,10 +24,10 @@
     function handleToggleTime() {
         if (engine) {
             if (timeText === 'Freeze') {
-                engine.properties.freezePhysics = true;
+                gameState.universe.freezePhysicsEngine = true;
                 timeText = 'Resume';
             } else {
-                engine.properties.freezePhysics = false;
+                gameState.universe.freezePhysicsEngine = false;
                 timeText = 'Freeze';
             }
         }

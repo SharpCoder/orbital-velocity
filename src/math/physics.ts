@@ -89,7 +89,7 @@ export class PhysicsEngine {
         return result;
     }
 
-    private orbitingBody(target: Body): Body {
+    findOrbitingBody(target: Body): Body {
         const bodies = this.enabled_bodies();
 
         let closestForce = -1;
@@ -123,7 +123,7 @@ export class PhysicsEngine {
         const position = [...body.position];
         const velocity = [...body.velocity];
 
-        const other = this.orbitingBody(body);
+        const other = this.findOrbitingBody(body);
         const masses = body.mass + other.mass;
         const center = [...other.position];
 
