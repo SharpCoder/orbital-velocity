@@ -17,6 +17,7 @@
         "@sveltejs/vite-plugin-svelte": "^2.0.3",
         "@tsconfig/svelte": "^3.0.0",
         "@types/jest": "^29.5.0",
+        "@types/node": "^18.15.11",
         "babel-jest": "^29.5.0",
         "canvas": "^2.11.2",
         "jest": "^29.5.0",
@@ -32,6 +33,7 @@
     },
     "dependencies": {
         "@smui/slider": "7.0.0-beta.3",
+        "random-seedable": "^1.0.8",
         "satellite.js": "^5.0.0"
     }
 }

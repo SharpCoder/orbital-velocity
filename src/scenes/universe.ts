@@ -33,6 +33,7 @@ import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
+import gameState from '../gameState';
 
 const physicsEngine = new PhysicsEngine();
 const offsetX = 1000;
@@ -122,12 +123,14 @@ export const UniverseScene = new Scene<EngineProperties>({
         camera.rotation[2] = originalOrbitalElements.e;
         camera.position = [...Planet.position];
 
+        // Setup the default universe
+
         // Initial propagation
         physicsEngine.update(dt);
     },
     update: (time, engine) => {
         const { camera } = engine.activeScene;
-        const { prograde, across } = engine.properties.orbit;
+        const { prograde, phase } = gameState.universe.current.maneuver;
 
         camera.position = Planet.position;
 
@@ -164,9 +167,9 @@ export const UniverseScene = new Scene<EngineProperties>({
         );
         const v2norm = norm(v2);
 
-        let dvx = vx * prograde + across * accel * (v2[0] / v2norm);
-        let dvy = vy * prograde + across * accel * (v2[1] / v2norm);
-        let dvz = vz * prograde + across * accel * (v2[2] / v2norm);
+        let dvx = vx * prograde + phase * accel * (v2[0] / v2norm);
+        let dvy = vy * prograde + phase * accel * (v2[1] / v2norm);
+        let dvz = vz * prograde + phase * accel * (v2[2] / v2norm);
 
         const maneuverPosition = [...Satellite.position];
         const maneuverVelocity = [

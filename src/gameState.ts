@@ -1,3 +1,4 @@
+import { XORShift } from 'random-seedable';
 import type { Engine } from 'webgl-engine';
 import { PhysicsEngine } from './math/physics';
 
@@ -15,6 +16,7 @@ export type Maneuver = {
 };
 
 class GameState {
+    random: XORShift;
     activeScene: string;
     listeners: Array<() => void>;
     deltaV: number;
@@ -25,6 +27,7 @@ class GameState {
             position: [number, number, number];
             velocity: [number, number, number];
             maneuver: {
+                active: boolean;
                 theta: number;
             } & Omit<Omit<Maneuver, 'position'>, 'velocity'>;
         };
@@ -34,9 +37,10 @@ class GameState {
     };
 
     constructor() {
+        this.random = new XORShift(1337);
         this.activeScene = 'universe';
         this.listeners = [];
-        this.deltaV = 1000;
+        this.deltaV = 100;
         this.universe = {
             showDeltaV: true,
             showHUD: true,
@@ -44,6 +48,7 @@ class GameState {
                 position: [0, 0, 0],
                 velocity: [0, 0, 0],
                 maneuver: {
+                    active: true,
                     theta: 0,
                     executeAt: 0,
                     prograde: 0,
@@ -64,6 +69,10 @@ class GameState {
         for (const fn of this.listeners) {
             fn();
         }
+    }
+
+    seedPrng(seed: number | bigint) {
+        this.random = new XORShift(seed);
     }
 
     addListener(listener: () => void) {
