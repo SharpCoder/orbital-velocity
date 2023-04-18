@@ -279,7 +279,7 @@ export function keplerianParameters(
     const N = norm(N_vec);
     let Omega = Math.acos(N_vec[0] / N);
 
-    if (N[XYZ[1]] >= 0) {
+    if (N_vec[XYZ[1]] < 0) {
         Omega = 2 * Math.PI - Omega;
     }
 
@@ -303,6 +303,7 @@ export function keplerianParameters(
         i,
         v,
         h,
+        rp: a * (1 - e),
         h_vec,
         e,
         e_vec,

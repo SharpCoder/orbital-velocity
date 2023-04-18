@@ -5,12 +5,12 @@ function whole(val: number) {
     return Math.trunc(val);
 }
 
-function createPhysicsEngine() {
+function createPhysicsEngine(mass = 1 / G) {
     const physicsEngine = new PhysicsEngine();
     physicsEngine.addBody({
         position: [0, 0, 0],
         velocity: [0, 0, 0],
-        mass: 1 / G,
+        mass,
     });
     return physicsEngine;
 }
@@ -55,4 +55,20 @@ test('Keplerian elements are derived properly at aggressive inclination', () => 
     expect(r(degs(params.argumentOfPeriapsis))).toBe(358.98);
     expect(r(degs(params.nu))).toBe(1.02);
     expect(Math.round(params.a * 10000) / 10000).toBe(-0.0005);
+});
+
+test('Keplerian elements are derived properly at more weird inclinations', () => {
+    const physicsEngine = createPhysicsEngine(1e26);
+    const planet = physicsEngine.addBody({
+        position: [1500, -500, 1000],
+        velocity: [0, 20, 40],
+        mass: 1,
+    });
+
+    const params = physicsEngine.keplerianParameters(planet);
+    expect(r(params.e)).toBe(r(0.54));
+    expect(r(params.i)).toBe(1.18);
+    expect(r(params.rightAscensionNode)).toBe(5.7);
+    expect(r(params.nu)).toBe(2.79);
+    expect(r(params.argumentOfPeriapsis)).toBe(4.11);
 });
