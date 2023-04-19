@@ -20,6 +20,8 @@ class GameState {
     listeners: Array<() => void>;
     deltaV: number;
     universe: {
+        activeOrbitId: number;
+        totalOrbits: number;
         showDeltaV: boolean;
         showHUD: boolean;
         current: {
@@ -38,6 +40,8 @@ class GameState {
         this.listeners = [];
         this.deltaV = 100;
         this.universe = {
+            totalOrbits: 1,
+            activeOrbitId: 0,
             showDeltaV: false,
             showHUD: true,
             current: {
@@ -79,6 +83,14 @@ class GameState {
             this.universe.showHUD = false;
         }
 
+        this.dispatch();
+    }
+
+    setManeuverParameters(prograde: number, phase: number) {
+        if (this.universe.current.maneuver) {
+            this.universe.current.maneuver.prograde = prograde;
+            this.universe.current.maneuver.phase = phase;
+        }
         this.dispatch();
     }
 

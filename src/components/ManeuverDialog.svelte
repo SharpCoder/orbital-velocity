@@ -12,6 +12,10 @@
     onMount(() => {
         gameState.addListener(() => {
             show = gameState.universe.showDeltaV;
+            if (gameState.universe.current.maneuver) {
+                prograde = gameState.universe.current.maneuver.prograde;
+                phase = gameState.universe.current.maneuver.phase;
+            }
         });
     });
 

@@ -1,4 +1,5 @@
 import { m4, type ProgramTemplate } from 'webgl-engine';
+import gameState from '../gameState';
 
 const depthVertexShader = `
     attribute vec4 a_position;
@@ -75,9 +76,14 @@ export const DepthShader: ProgramTemplate = {
             type: gl.FLOAT,
             normalized: false,
             generateData: (engine) => {
+                const activeOrbitId = gameState.universe.activeOrbitId;
+
                 return new Float32Array(
                     engine.activeScene.objects.flatMap((obj) => {
-                        if (obj.properties?.['plane']) {
+                        if (
+                            obj.properties?.['plane'] &&
+                            obj.properties?.['id'] === activeOrbitId
+                        ) {
                             return obj.vertexes;
                         } else {
                             return obj.vertexes.map((_) => 0);

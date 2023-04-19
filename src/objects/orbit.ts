@@ -1,28 +1,14 @@
+import { m4, rads, zeros, type Obj3d } from 'webgl-engine';
 import {
-    type Obj3d,
-    m4,
-    getAnglesFromMatrix,
-    zeros,
-    degs,
-    rads,
-    r,
-    cuboid,
-    getAnglesFromMatrix2,
-} from 'webgl-engine';
-import {
-    drawCube,
     drawCylinder,
     lineTo,
     lineToPositionAndRotation,
     type LineToProps,
 } from '../drawing';
 import { EllipseCalculator } from '../math/ellipse';
-import {
-    type PhysicsEngine,
-    type Body,
-    keplerianParameters,
-} from '../math/physics';
+import { keplerianParameters } from '../math/physics';
 import { createContainer } from './container';
+import { drawManeuverNode } from './maneuverNode';
 
 export type Orbit3d = Obj3d & {
     recalculateOrbit: (
@@ -34,6 +20,7 @@ export type Orbit3d = Obj3d & {
 };
 
 export function drawOrbit(
+    id: number,
     position: number[],
     velocity: number[],
     origin: number[],
@@ -48,6 +35,9 @@ export function drawOrbit(
         rightAscensionNode,
         argumentOfPeriapsis,
         i;
+
+    // Create a maneuver node
+    const maneuverNode = drawManeuverNode(id, 1.2);
 
     const thickness = 15;
     const orbit: Orbit3d = {
@@ -64,8 +54,17 @@ export function drawOrbit(
             rightAscensionNode = params.rightAscensionNode;
             argumentOfPeriapsis = params.argumentOfPeriapsis;
             i = params.i;
+
+            maneuverNode.configure(params.semiMajorAxis, params.semiMinorAxis);
         },
     };
+
+    // Attach maneuver node
+    orbit.children.push(maneuverNode);
+    orbit.properties = orbit.properties ?? {};
+    maneuverNode.properties = maneuverNode.properties ?? {};
+    orbit.properties['id'] = id;
+    maneuverNode.properties['id'] = id;
 
     // Create the segments
     const segments: Obj3d[] = [];

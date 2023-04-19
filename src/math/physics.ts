@@ -90,6 +90,7 @@ export class PhysicsEngine {
     }
 
     findOrbitingBody(target: Body): Body {
+        if (!target) return;
         const bodies = this.enabled_bodies();
 
         let closestForce = -1;
