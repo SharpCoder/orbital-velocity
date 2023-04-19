@@ -244,63 +244,68 @@ function addManeuver(player: Body, physicsEngine: PhysicsEngine) {
         {
             properties: { maneuverCube },
             update: (time_t, engine) => {
-                const { prograde, phase } = gameState.universe.current.maneuver;
+                if (gameState.universe.current.maneuver) {
+                    const { prograde, phase } = maneuverPlan;
 
-                // Check if this maneuver is still active.
-                if (maneuverPlan.active === false) {
-                    // Destroy!!!!
-                    gameState.setShowDeltaV(false);
-                    gameState.clearManeuver();
-                    UniverseScene.removeObject(maneuverCube);
-                    UniverseScene.removeObject(maneuverOrbit);
-                    if (orbits.includes(maneuverOrbit)) {
-                        orbits.splice(orbits.indexOf(maneuverOrbit), 1);
+                    // Check if this maneuver is still active.
+                    if (maneuverPlan.active === false) {
+                        // Destroy!!!!
+                        gameState.setShowDeltaV(false);
+                        gameState.clearManeuver();
+                        UniverseScene.removeObject(maneuverCube);
+                        UniverseScene.removeObject(maneuverOrbit);
+                        if (orbits.includes(maneuverOrbit)) {
+                            orbits.splice(orbits.indexOf(maneuverOrbit), 1);
+                        }
+                    } else {
+                        // Calculate the new orbit
+                        const accel = 0.5;
+
+                        // Calculate the gravity field
+                        const gravityField = player._forces.reduce(
+                            (acc, cur) => {
+                                acc[0] += cur[0];
+                                acc[1] += cur[1];
+                                acc[2] += cur[2];
+                                return acc;
+                            },
+                            [0, 0, 0]
+                        );
+
+                        const unit = [...player.velocity];
+                        const mag = norm(unit);
+
+                        const vx = accel * (unit[0] / mag);
+                        const vy = accel * (unit[1] / mag);
+                        const vz = accel * (unit[2] / mag);
+
+                        const v2 = m4.cross(
+                            unit.map((v, i) => gravityField[i]),
+                            unit.map((v) => v)
+                        );
+                        const v2norm = norm(v2);
+
+                        let dvx =
+                            vx * prograde + phase * accel * (v2[0] / v2norm);
+                        let dvy =
+                            vy * prograde + phase * accel * (v2[1] / v2norm);
+                        let dvz =
+                            vz * prograde + phase * accel * (v2[2] / v2norm);
+
+                        const maneuverPosition = [...player.position];
+                        const maneuverVelocity = [
+                            player.velocity[0] + dvx,
+                            player.velocity[1] + dvy,
+                            player.velocity[2] + dvz,
+                        ];
+
+                        maneuverOrbit.recalculateOrbit(
+                            [...maneuverPosition],
+                            [...maneuverVelocity],
+                            [...orbitingBody.position],
+                            orbitingBody.mass + player.mass
+                        );
                     }
-                } else {
-                    // Calculate the new orbit
-                    const accel = 0.5;
-
-                    // Calculate the gravity field
-                    const gravityField = player._forces.reduce(
-                        (acc, cur) => {
-                            acc[0] += cur[0];
-                            acc[1] += cur[1];
-                            acc[2] += cur[2];
-                            return acc;
-                        },
-                        [0, 0, 0]
-                    );
-
-                    const unit = [...player.velocity]; //.map((u, i) => u - gravityField[i]);
-                    const mag = norm(unit);
-
-                    const vx = accel * (unit[0] / mag);
-                    const vy = accel * (unit[1] / mag);
-                    const vz = accel * (unit[2] / mag);
-
-                    const v2 = m4.cross(
-                        unit.map((v, i) => gravityField[i]),
-                        unit.map((v) => v)
-                    );
-                    const v2norm = norm(v2);
-
-                    let dvx = vx * prograde + phase * accel * (v2[0] / v2norm);
-                    let dvy = vy * prograde + phase * accel * (v2[1] / v2norm);
-                    let dvz = vz * prograde + phase * accel * (v2[2] / v2norm);
-
-                    const maneuverPosition = [...player.position];
-                    const maneuverVelocity = [
-                        player.velocity[0] + dvx,
-                        player.velocity[1] + dvy,
-                        player.velocity[2] + dvz,
-                    ];
-
-                    maneuverOrbit.recalculateOrbit(
-                        [...maneuverPosition],
-                        [...maneuverVelocity],
-                        [...orbitingBody.position],
-                        orbitingBody.mass + player.mass
-                    );
                 }
             },
         }

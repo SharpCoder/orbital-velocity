@@ -49,6 +49,7 @@ export function drawOrbit(
         argumentOfPeriapsis,
         i;
 
+    const thickness = 15;
     const orbit: Orbit3d = {
         ...createContainer({
             ...containerProps,
@@ -78,7 +79,7 @@ export function drawOrbit(
             from: zeros(),
             to: zeros(),
             sides: 4,
-            thickness: 5,
+            thickness,
             color: [255, 0, 0],
             ...lineProps,
         });
@@ -88,12 +89,6 @@ export function drawOrbit(
     }
 
     orbit.recalculateOrbit(position, velocity, origin, mass);
-
-    let props = {
-        a: 0,
-        b: 0,
-        c: 0,
-    };
 
     const originalUpdate = containerProps?.update;
     orbit.update = function (time_t, engine) {
@@ -115,7 +110,7 @@ export function drawOrbit(
                 const cylinder = drawCylinder({
                     ...lineToPositionAndRotation({ from, to }),
                     sides: 4,
-                    thickness: 5,
+                    thickness,
                     color: [255, 0, 0],
                     ...lineProps,
                 });
