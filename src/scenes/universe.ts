@@ -1,5 +1,6 @@
 import {
     DefaultShader,
+    degs,
     Engine,
     Flatten,
     loadModel,
@@ -29,6 +30,7 @@ import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
 
 let dt = 0.08;
+let initialized = false;
 let player: Body;
 
 async function loadModels(): Promise<Record<string, ParsedModel>> {
@@ -142,15 +144,29 @@ export const UniverseScene = new Scene<EngineProperties>({
         useTouchCamera(engine);
 
         const { physicsEngine } = gameState.universe;
-        if (gameState.universe.freezePhysicsEngine !== true) {
+        if (
+            gameState.universe.freezePhysicsEngine !== true ||
+            initialized === false
+        ) {
             physicsEngine.update(dt);
 
             if (player) {
+                initialized = true;
                 gameState.setPosition(player.position);
                 gameState.setVelocity(player.velocity);
                 chainedOrbits[1] = player;
 
                 processManeuvers();
+
+                // Update HUD
+                const params = physicsEngine.keplerianParameters(player);
+                gameState.universe.readout = [
+                    `Δv ${gameState.deltaV}`,
+                    `e ${r(params.e)}`,
+                    `i ${r(degs(params.i))}°`,
+                    `Ω ${r(degs(params.rightAscensionNode))}°`,
+                    `ω ${r(degs(params.argumentOfPeriapsis))}°`,
+                ].join('\n');
             }
         }
     },
@@ -247,6 +263,11 @@ function addManeuver(targetBody: Body, physicsEngine: PhysicsEngine) {
     const colorIdx = orbits.length % (colors.length - 1);
     const maneuverPlan: Maneuver = {
         orbitId,
+        orbitColor: [
+            colors[colorIdx][0],
+            colors[colorIdx][1],
+            colors[colorIdx][2],
+        ],
         status: 'pending',
         phase: 0,
         prograde: 0,
@@ -317,9 +338,6 @@ function addManeuver(targetBody: Body, physicsEngine: PhysicsEngine) {
                     maneuverBody.velocity[1] = targetBody.velocity[1] + dvy;
                     maneuverBody.velocity[2] = targetBody.velocity[2] + dvz;
 
-                    if (orbitId === 1) {
-                        console.log('recalculating orbit');
-                    }
                     maneuverOrbit.recalculateOrbit(
                         [...maneuverPosition],
                         [...maneuverVelocity],
@@ -335,6 +353,7 @@ function addManeuver(targetBody: Body, physicsEngine: PhysicsEngine) {
     UniverseScene.addObject(maneuverOrbit);
 
     gameState.universe.maneuvers.push(maneuverPlan);
+    gameState.dispatch();
 
     function cleanup() {
         if (orbitId === 1) return;

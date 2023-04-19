@@ -2,17 +2,23 @@
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
     import type { EngineProperties } from '../types';
-    import gameState from '../gameState';
+    import gameState, { type Maneuver } from '../gameState';
+    import ManeuverItem from './ManeuverItem.svelte';
 
     const engine = window['gameEngine'] as Engine<EngineProperties>;
+    let maneuvers: Maneuver[] = [];
     let readoutEl;
     let timeText = 'Resume';
     let show = true;
 
     onMount(() => {
+        gameState.addListener(() => {
+            maneuvers = gameState.universe.maneuvers;
+        });
+
         setInterval(() => {
             if (engine && readoutEl) {
-                readoutEl.innerText = engine.properties['readout'] ?? '';
+                readoutEl.innerText = gameState.universe.readout ?? '';
             }
 
             show =
@@ -42,6 +48,14 @@
                 <button on:click={handleToggleTime}>{timeText}</button>
             </div>
         </div>
+
+        <div class="maneuver-items">
+            {#each maneuvers as maneuver}
+                {#if maneuver.orbitId !== 1}
+                    <ManeuverItem {maneuver} />
+                {/if}
+            {/each}
+        </div>
     </div>
 {/if}
 
@@ -53,8 +67,21 @@
         flex-grow: 1;
         position: absolute;
         overflow: hidden;
+        flex-direction: column;
         font-family: 'Nanum Gothic Coding', monospace;
     }
+
+    .maneuver-items {
+        padding: 20px;
+        flex-grow: 1;
+        flex-direction: column;
+        top: 0;
+        position: absolute;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
     .item-space {
         padding: 20px;
         width: 100%;

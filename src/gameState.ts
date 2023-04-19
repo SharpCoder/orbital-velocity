@@ -5,6 +5,8 @@ import { PhysicsEngine } from './math/physics';
 export type Maneuver = {
     /** The id of the orbit which is tied to this plan */
     orbitId: number;
+    /** The color of this orbit node */
+    orbitColor: [number, number, number];
     /** The maneuver status */
     status: 'pending' | 'executing' | 'complete' | 'aborted';
     /** Position of the satellite at execution time */
@@ -27,6 +29,7 @@ class GameState {
     listeners: Array<() => void>;
     deltaV: number;
     universe: {
+        readout: string;
         activeOrbitId: number;
         totalOrbits: number;
         showDeltaV: boolean;
@@ -47,6 +50,7 @@ class GameState {
         this.listeners = [];
         this.deltaV = 100;
         this.universe = {
+            readout: '',
             totalOrbits: 1,
             activeOrbitId: 0,
             showDeltaV: false,
@@ -66,7 +70,7 @@ class GameState {
         return window['gameEngine'];
     }
 
-    private dispatch() {
+    dispatch() {
         for (const fn of this.listeners) {
             fn();
         }
@@ -128,10 +132,12 @@ class GameState {
 
     setManeuver(maneuver: Maneuver) {
         this.universe.current.maneuver = maneuver;
+        this.dispatch();
     }
 
     clearManeuver() {
         this.universe.current.maneuver = undefined;
+        this.dispatch();
     }
 
     setFreezePhysicsEngine(value: boolean) {
