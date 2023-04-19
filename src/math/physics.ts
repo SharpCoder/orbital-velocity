@@ -301,6 +301,12 @@ export function keplerianParameters(
     if (e_vec[XYZ[2]] < 0) {
         omega = 2 * Math.PI - omega;
     }
+
+    // tanE(t)2=(1+e1−e)−1/2tanν(t)2
+    const eccentricAonomaly = Math.acos(
+        (Math.cos(nu) + e) / (1 + e * Math.cos(nu))
+    );
+
     return {
         r,
         a,
@@ -321,6 +327,7 @@ export function keplerianParameters(
         h_vec,
         e,
         e_vec,
+        eccentricAonomaly,
     };
 }
 

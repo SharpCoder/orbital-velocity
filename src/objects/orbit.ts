@@ -72,7 +72,11 @@ export function drawOrbit(
                 invalid = true;
             }
 
-            maneuverNode.configure(params.semiMajorAxis, params.semiMinorAxis);
+            maneuverNode.configure(
+                params.rightAscensionNode,
+                params.semiMajorAxis,
+                params.semiMinorAxis
+            );
 
             const positions = EllipseCalculator.compute({
                 semiMajorAxis,

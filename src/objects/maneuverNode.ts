@@ -1,10 +1,14 @@
-import { cuboid, zeros, type Obj3d } from 'webgl-engine';
+import { cuboid, rads, zeros, type Obj3d } from 'webgl-engine';
 import { drawCube } from '../drawing';
 import gameState from '../gameState';
 import { createContainer } from './container';
 
 export type ManeuverNode = Obj3d & {
-    configure: (semiMajorAxis: number, semiMinorAxis: number) => void;
+    configure: (
+        raan: number,
+        semiMajorAxis: number,
+        semiMinorAxis: number
+    ) => void;
 };
 
 export function drawManeuverNode(
@@ -14,10 +18,16 @@ export function drawManeuverNode(
 ): ManeuverNode {
     let semiMajorAxis = 0;
     let semiMinorAxis = 0;
+    let raan = 0;
 
     const container = {
         ...createContainer(containerProps),
-        configure: (_semiMajorAxis: number, _semiMinorAxis: number) => {
+        configure: (
+            _raan: number,
+            _semiMajorAxis: number,
+            _semiMinorAxis: number
+        ) => {
+            raan = _raan;
             semiMajorAxis = _semiMajorAxis;
             semiMinorAxis = _semiMinorAxis;
         },
@@ -100,6 +110,7 @@ export function drawManeuverNode(
         }
 
         // Hosit the information up
+        container.properties['mouseAngle'] = mouseAngle;
         container.properties['targetPosition'] = [
             maneuverCube._bbox.x,
             maneuverCube._bbox.y,
@@ -109,10 +120,4 @@ export function drawManeuverNode(
     };
 
     return container;
-}
-
-function normalize(value: number, start: number, end: number) {
-    const width = end - start; //
-    const offsetValue = value - start; // value relative to 0
-    return offsetValue - Math.floor(offsetValue / width) * width + start;
 }

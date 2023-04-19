@@ -29,13 +29,22 @@ export function createUniverse(seed): UniverseSimulation {
 
     const planet = physicsEngine.addBody({
         position: [0, 0, 0],
-        velocity: [0, 0, 0],
+        velocity: [50, 0, 0],
         mass: 1e26,
+        fixed: true,
     });
+
+    // const planet2 = physicsEngine.addBody({
+    //     position: [3000, 0, 3000],
+    //     velocity: [-50, 0, -150],
+    //     mass: 1e26,
+    //     fixed: true,
+    // });
 
     const objects: UniverseObject[] = [
         { body: player, type: 'player' },
         { body: planet, type: 'planet' },
+        // { body: planet2, type: 'planet' },
     ];
 
     return {

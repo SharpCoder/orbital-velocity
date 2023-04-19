@@ -28,6 +28,7 @@ import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
+import { normalize } from '../utils';
 
 let dt = 0.08;
 let initialized = false;
@@ -227,7 +228,14 @@ export const UniverseScene = new Scene<EngineProperties>({
                     }
 
                     if (bestNode) {
-                        console.log({ bestNode });
+                        console.log({
+                            mouseAngle: maneuverNode.properties['mouseAngle'],
+                            eccentricAnomaly: normalize(
+                                params.eccentricAonomaly,
+                                0,
+                                2 * Math.PI
+                            ),
+                        });
                         for (let j = 0; j < 3; j++) bestNode.velocity[j] += 0.1;
                         addManeuver(bestNode, physicsEngine);
                     }
