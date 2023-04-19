@@ -243,6 +243,7 @@ function addManeuver(targetBody: Body, physicsEngine: PhysicsEngine) {
     const colorIdx = orbits.length % (colors.length - 1);
     const maneuverPlan: Maneuver = {
         active: true,
+        executed: false,
         phase: 0,
         position: [...targetBody.position],
         prograde: 0,

@@ -62,6 +62,7 @@
                     />
                 </div>
                 <button class="btn-reset" on:click={reset}>Reset</button>
+                <button class="btn-reset" on:click={reset}>Accept</button>
             </div>
         </div>
     </div>

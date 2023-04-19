@@ -48,6 +48,12 @@ export function drawManeuverNode(
 
     const originalUpdate = container.update;
     container.update = function (time_t, engine) {
+        if (container.properties['id'] !== gameState.universe.activeOrbitId) {
+            container.transparent = false;
+            maneuverCube.transparent = false;
+            return;
+        }
+
         const mouse_x = engine.properties['mouse_x'] ?? 0;
         const mouse_z = engine.properties['mouse_z'] ?? 0;
 

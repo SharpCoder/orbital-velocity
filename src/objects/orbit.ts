@@ -34,11 +34,19 @@ export function drawOrbit(
         semiMinorAxis,
         rightAscensionNode,
         argumentOfPeriapsis,
-        i;
+        i,
+        invalid = false;
 
     // Create a maneuver node
     const maneuverNode = drawManeuverNode(id, 1.2);
 
+    const segments: Obj3d[] = [];
+    const positions = EllipseCalculator.compute({
+        semiMajorAxis: 1,
+        semiMinorAxis: 1,
+    });
+
+    const originalColor = lineProps.color;
     const thickness = 15;
     const orbit: Orbit3d = {
         ...createContainer({
@@ -47,52 +55,25 @@ export function drawOrbit(
         recalculateOrbit: (p, v, o, mass) => {
             const params = keplerianParameters([...p], [...v], [...o], mass);
 
-            e = params.e;
-            center = params.center;
-            semiMajorAxis = params.semiMajorAxis;
-            semiMinorAxis = params.semiMinorAxis;
-            rightAscensionNode = params.rightAscensionNode;
-            argumentOfPeriapsis = params.argumentOfPeriapsis;
-            i = params.i;
+            if (
+                !isNaN(params.semiMajorAxis) &&
+                !isNaN(params.semiMinorAxis) &&
+                params.e < 1.0
+            ) {
+                e = params.e;
+                center = params.center;
+                semiMajorAxis = params.semiMajorAxis;
+                semiMinorAxis = params.semiMinorAxis;
+                rightAscensionNode = params.rightAscensionNode;
+                argumentOfPeriapsis = params.argumentOfPeriapsis;
+                i = params.i;
+                invalid = false;
+            } else {
+                invalid = true;
+            }
 
             maneuverNode.configure(params.semiMajorAxis, params.semiMinorAxis);
-        },
-    };
 
-    // Attach maneuver node
-    orbit.children.push(maneuverNode);
-    orbit.properties = orbit.properties ?? {};
-    maneuverNode.properties = maneuverNode.properties ?? {};
-    orbit.properties['id'] = id;
-    maneuverNode.properties['id'] = id;
-
-    // Create the segments
-    const segments: Obj3d[] = [];
-    const positions = EllipseCalculator.compute({
-        semiMajorAxis: 1,
-        semiMinorAxis: 1,
-    });
-
-    for (let i = 0; i < positions.length - 1; i++) {
-        const segment = lineTo({
-            from: zeros(),
-            to: zeros(),
-            sides: 4,
-            thickness,
-            color: [255, 0, 0],
-            ...lineProps,
-        });
-
-        segments.push(segment);
-        orbit.children.push(segment);
-    }
-
-    orbit.recalculateOrbit(position, velocity, origin, mass);
-
-    const originalUpdate = containerProps?.update;
-    orbit.update = function (time_t, engine) {
-        // TODO: Handle eccentricity > 1.0
-        if (e <= 1.0) {
             const positions = EllipseCalculator.compute({
                 semiMajorAxis,
                 semiMinorAxis,
@@ -110,8 +91,8 @@ export function drawOrbit(
                     ...lineToPositionAndRotation({ from, to }),
                     sides: 4,
                     thickness,
-                    color: [255, 0, 0],
                     ...lineProps,
+                    color: invalid ? [255, 0, 0] : originalColor,
                 });
 
                 segment.vertexes = cylinder.vertexes;
@@ -152,10 +133,31 @@ export function drawOrbit(
             orbit.position = orbitPosition;
             orbit.additionalMatrix = matrix;
             orbit.offsets = [fociX, 0, 0];
-        }
-
-        originalUpdate && originalUpdate.call(this, time_t, engine);
+        },
     };
 
+    // Attach maneuver node
+    orbit.children.push(maneuverNode);
+    orbit.properties = orbit.properties ?? {};
+    maneuverNode.properties = maneuverNode.properties ?? {};
+    orbit.properties['id'] = id;
+    maneuverNode.properties['id'] = id;
+
+    // Create the segments
+    for (let i = 0; i < positions.length - 1; i++) {
+        const segment = lineTo({
+            from: zeros(),
+            to: zeros(),
+            sides: 4,
+            thickness,
+            color: [255, 0, 0],
+            ...lineProps,
+        });
+
+        segments.push(segment);
+        orbit.children.push(segment);
+    }
+
+    orbit.recalculateOrbit(position, velocity, origin, mass);
     return orbit;
 }

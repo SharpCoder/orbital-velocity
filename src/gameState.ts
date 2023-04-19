@@ -4,6 +4,8 @@ import { PhysicsEngine } from './math/physics';
 
 export type Maneuver = {
     active: boolean;
+    /** Whether the maneuver has been executed already or not */
+    executed: boolean;
     /** Position of the satellite at execution time */
     position: [number, number, number];
     /** Velocity of the satellite at execution time */
