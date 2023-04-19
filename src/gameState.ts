@@ -3,17 +3,22 @@ import type { Engine } from 'webgl-engine';
 import { PhysicsEngine } from './math/physics';
 
 export type Maneuver = {
-    active: boolean;
-    /** Whether the maneuver has been executed already or not */
-    executed: boolean;
+    /** The id of the orbit which is tied to this plan */
+    orbitId: number;
+    /** The maneuver status */
+    status: 'pending' | 'executing' | 'complete' | 'aborted';
     /** Position of the satellite at execution time */
     position: [number, number, number];
     /** Velocity of the satellite at execution time */
     velocity: [number, number, number];
-    /** Prograde velocity */
+    /** Original amount of delta-v in the prograde direction */
     prograde: number;
-    /** Phase velocity */
+    /** Original amount of delta-v in the phase direction */
     phase: number;
+    /** Remaining delta-V in the prograde direction */
+    remainingPrograde: number;
+    /** Remaining delta-v in the phase direction */
+    remainingPhase: number;
 };
 
 class GameState {

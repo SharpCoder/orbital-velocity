@@ -31,7 +31,7 @@
         phase = 0;
 
         if (gameState.universe.current.maneuver) {
-            gameState.universe.current.maneuver.active = false;
+            gameState.universe.current.maneuver.status = 'aborted';
         }
     }
 </script>
