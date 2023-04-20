@@ -17,6 +17,7 @@ export type Orbit3d = Obj3d & {
         origin: number[],
         mass: number
     ) => void;
+    setInteractive: (enabled: boolean) => void;
 };
 
 export function drawOrbit(
@@ -51,6 +52,9 @@ export function drawOrbit(
         ...createContainer({
             ...containerProps,
         }),
+        setInteractive: (enabled: boolean) => {
+            maneuverNode.transparent = enabled;
+        },
         recalculateOrbit: (p, v, o, mass) => {
             const params = keplerianParameters([...p], [...v], [...o], mass);
             if (

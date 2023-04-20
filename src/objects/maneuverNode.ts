@@ -16,7 +16,8 @@ export function drawManeuverNode(
     let semiMinorAxis = 0;
 
     const container = {
-        ...createContainer(containerProps),
+        ...createContainer({ ...containerProps }),
+        transparent: false,
         configure: (_semiMajorAxis: number, _semiMinorAxis: number) => {
             semiMajorAxis = _semiMajorAxis;
             semiMinorAxis = _semiMinorAxis;
@@ -52,6 +53,14 @@ export function drawManeuverNode(
 
     const originalUpdate = container.update;
     container.update = function (time_t, engine) {
+        if (container.transparent === true) {
+            orbitalPlane.properties['plane'] = false;
+            maneuverCube.transparent = true;
+            return;
+        } else {
+            orbitalPlane.properties['plane'] = true;
+        }
+
         const mouse_x = engine.properties['mouse_x'] ?? 0;
         const mouse_z = engine.properties['mouse_z'] ?? 0;
 
@@ -89,10 +98,10 @@ export function drawManeuverNode(
         );
         if (dist < 150) {
             maneuverCube.transparent = false;
-            container.transparent = false;
+            container.properties['visible'] = true;
         } else {
             maneuverCube.transparent = true;
-            container.transparent = true;
+            container.properties['visible'] = false;
         }
 
         // Hosit the information up

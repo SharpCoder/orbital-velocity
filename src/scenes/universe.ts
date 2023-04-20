@@ -127,6 +127,18 @@ export const UniverseScene = new Scene<EngineProperties>({
                                             player.position
                                         );
 
+                                    // Basic orbit logic
+                                    const { maneuverSystem } =
+                                        gameState.universe;
+                                    if (
+                                        maneuverSystem &&
+                                        maneuverSystem.nodes.length === 0
+                                    ) {
+                                        orbit.setInteractive(false);
+                                    } else {
+                                        orbit.setInteractive(true);
+                                    }
+
                                     // Redraw the base orbit
                                     orbit.recalculateOrbit(
                                         [...player.position],
@@ -184,7 +196,7 @@ export const UniverseScene = new Scene<EngineProperties>({
 
             if (player) {
                 if (maneuverSystem) {
-                    maneuverSystem.executePlans();
+                    maneuverSystem.loop();
                 }
 
                 initialized = true;
@@ -212,7 +224,7 @@ export const UniverseScene = new Scene<EngineProperties>({
         );
         if (mouseClickDuration < 180) {
             for (const maneuverNode of maneuverNodes) {
-                if (maneuverNode.transparent === false) {
+                if (maneuverNode.properties['visible']) {
                     const { physicsEngine, maneuverSystem } =
                         gameState.universe;
 

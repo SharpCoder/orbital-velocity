@@ -1,7 +1,7 @@
 import { type Scene, type Obj3d, norm, m4, rads } from 'webgl-engine';
 import { drawCube } from './drawing';
 import type { Body } from './math/physics';
-import { drawOrbit } from './objects/orbit';
+import { drawOrbit, type Orbit3d } from './objects/orbit';
 import gameState from './gameState';
 
 let nodeId = 0;
@@ -29,7 +29,7 @@ type InternalManeuverPlan = ManeuverPlan & {
 export class ManeuverSystem {
     nodes: Array<InternalManeuverPlan>;
     activeNode: InternalManeuverPlan;
-    objects: Record<number, Obj3d[]>;
+    objects: Record<number, [Obj3d, Orbit3d]>;
     player: Body;
     scene: Scene<unknown>;
 
@@ -166,7 +166,7 @@ export class ManeuverSystem {
         foci: number[],
         mass: number,
         color: number[]
-    ): Obj3d[] {
+    ): [Obj3d, Orbit3d] {
         const maneuverCube = drawCube({
             position,
             size: [50, 50, 50],
@@ -221,7 +221,27 @@ export class ManeuverSystem {
         }
     }
 
-    executePlans() {
+    /** Process all business logic */
+    loop() {
+        this.executePlans();
+        const topNode = this.getTopNode();
+
+        for (const planId in this.objects) {
+            const plan = this.nodes.find(
+                (plan) => `${plan.planId}` === `${planId}`
+            );
+
+            if (plan) {
+                if (plan === topNode) {
+                    this.objects[planId][1].setInteractive(true);
+                } else {
+                    this.objects[planId][1].setInteractive(false);
+                }
+            }
+        }
+    }
+
+    private executePlans() {
         // Get the bottom plan
         const { physicsEngine } = gameState.universe;
         const plan = this.getBottomNode();
