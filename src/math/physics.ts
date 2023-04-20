@@ -1,4 +1,5 @@
 import { m3, norm } from 'webgl-engine';
+import { normalize } from '../utils';
 
 type Vec3d = [number, number, number];
 type StateVector = number[];
@@ -304,9 +305,15 @@ export function keplerianParameters(
     }
 
     // tanE(t)2=(1+e1−e)−1/2tanν(t)2
-    const eccentricAonomaly = Math.acos(
+    let eccentricAonomaly = Math.acos(
         (Math.cos(nu) + e) / (1 + e * Math.cos(nu))
     );
+
+    if (v_r > 0) {
+        eccentricAonomaly = -eccentricAonomaly;
+    }
+
+    eccentricAonomaly = normalize(eccentricAonomaly, 0, 2 * Math.PI);
 
     return {
         r,

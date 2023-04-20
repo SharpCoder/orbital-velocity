@@ -17,6 +17,7 @@ import {
 import { purple } from '../colors';
 import gameState from '../gameState';
 import { useTouchCamera } from '../logic/useTouchCamera';
+import { ManeuverSystem } from '../maneuverSystem';
 import { createUniverse } from '../mapgen';
 import type { Body } from '../math/physics';
 import { drawOrbit } from '../objects/orbit';
@@ -102,6 +103,11 @@ export const UniverseScene = new Scene<EngineProperties>({
                             ),
                         });
 
+                        gameState.universe.maneuverSystem = new ManeuverSystem(
+                            UniverseScene,
+                            phys
+                        );
+
                         const orbitingBody = physicsEngine.findOrbitingBody(
                             player.position
                         );
@@ -179,69 +185,83 @@ export const UniverseScene = new Scene<EngineProperties>({
         }
     },
     onMouseUp: (engine) => {
-        // const { mouseClickDuration } = engine;
-        // // Collect all maneuver nodes
-        // const { objects } = engine.activeScene;
-        // const maneuverNodes = objects.filter(
-        //     (obj) => obj.properties?.['maneuverNode']
-        // );
-        // if (mouseClickDuration < 180) {
-        //     for (const maneuverNode of maneuverNodes) {
-        //         if (
-        //             maneuverNode.transparent === false &&
-        //             maneuverNode.properties['id'] === activeOrbitId
-        //         ) {
-        //             const { physicsEngine } = gameState.universe;
-        //             const targetBody =
-        //                 chainedOrbits[gameState.universe.activeOrbitId];
-        //             const { targetPosition } = maneuverNode.properties;
-        //             const center = physicsEngine.findOrbitingBody(targetBody);
-        //             const params = keplerianParameters(
-        //                 targetBody.position,
-        //                 targetBody.velocity,
-        //                 center.position,
-        //                 center.mass + targetBody.mass
-        //             );
-        //             const steps = physicsEngine.propogate(
-        //                 targetBody,
-        //                 dt,
-        //                 params.orbitalPeriod
-        //             );
-        //             // Find the closest position
-        //             let bestDistance = Number.MAX_VALUE;
-        //             let bestNode: Body;
-        //             for (const step of steps) {
-        //                 const dist = Math.sqrt(
-        //                     Math.pow(step.position[0] - targetPosition[0], 2) +
-        //                         Math.pow(
-        //                             step.position[1] - targetPosition[1],
-        //                             2
-        //                         ) +
-        //                         Math.pow(
-        //                             step.position[2] - targetPosition[2],
-        //                             2
-        //                         )
-        //                 );
-        //                 if (bestDistance > dist) {
-        //                     bestDistance = dist;
-        //                     bestNode = step;
-        //                 }
-        //             }
-        //             if (bestNode) {
-        //                 console.log({
-        //                     mouseAngle: maneuverNode.properties['mouseAngle'],
-        //                     eccentricAnomaly: normalize(
-        //                         params.eccentricAonomaly,
-        //                         0,
-        //                         2 * Math.PI
-        //                     ),
-        //                 });
-        //                 for (let j = 0; j < 3; j++) bestNode.velocity[j] += 0.1;
-        //                 addManeuver(bestNode, physicsEngine);
-        //             }
-        //         }
-        //     }
-        // }
+        const { mouseClickDuration } = engine;
+        // Collect all maneuver nodes
+        const { objects } = engine.activeScene;
+        const maneuverNodes = objects.filter(
+            (obj) => obj.properties?.['maneuverNode']
+        );
+        if (mouseClickDuration < 180) {
+            for (const maneuverNode of maneuverNodes) {
+                if (maneuverNode.transparent === false) {
+                    const { physicsEngine } = gameState.universe;
+                    const { mouseAngle } = maneuverNode.properties;
+                    const params = physicsEngine.keplerianParameters(player);
+
+                    console.log({
+                        mouseAngle,
+                        eccentricAnomaly: params.eccentricAonomaly,
+                    });
+
+                    // gameState.universe.maneuverSystem.registerNode({
+                    //     color: [255, 0, 0],
+                    //     phase: 0,
+                    //     prograde: 0,
+                    //     position: player.position,
+                    //     targetAngle: mouseAngle,
+                    //     velocity: player.velocity,
+                    // });
+
+                    // const targetBody =
+                    //     chainedOrbits[gameState.universe.activeOrbitId];
+                    // const { targetPosition } = maneuverNode.properties;
+                    // const center = physicsEngine.findOrbitingBody(targetBody);
+                    // const params = keplerianParameters(
+                    //     targetBody.position,
+                    //     targetBody.velocity,
+                    //     center.position,
+                    //     center.mass + targetBody.mass
+                    // );
+                    // const steps = physicsEngine.propogate(
+                    //     targetBody,
+                    //     dt,
+                    //     params.orbitalPeriod
+                    // );
+                    // // Find the closest position
+                    // let bestDistance = Number.MAX_VALUE;
+                    // let bestNode: Body;
+                    // for (const step of steps) {
+                    //     const dist = Math.sqrt(
+                    //         Math.pow(step.position[0] - targetPosition[0], 2) +
+                    //             Math.pow(
+                    //                 step.position[1] - targetPosition[1],
+                    //                 2
+                    //             ) +
+                    //             Math.pow(
+                    //                 step.position[2] - targetPosition[2],
+                    //                 2
+                    //             )
+                    //     );
+                    //     if (bestDistance > dist) {
+                    //         bestDistance = dist;
+                    //         bestNode = step;
+                    //     }
+                    // }
+                    // if (bestNode) {
+                    //     console.log({
+                    //         mouseAngle: maneuverNode.properties['mouseAngle'],
+                    //         eccentricAnomaly: normalize(
+                    //             params.eccentricAonomaly,
+                    //             0,
+                    //             2 * Math.PI
+                    //         ),
+                    //     });
+                    //     for (let j = 0; j < 3; j++) bestNode.velocity[j] += 0.1;
+                    //     addManeuver(bestNode, physicsEngine);
+                    // }
+                }
+            }
+        }
     },
     status: 'initializing',
 });

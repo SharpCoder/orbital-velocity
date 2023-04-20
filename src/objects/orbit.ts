@@ -28,7 +28,7 @@ export function drawOrbit(
     containerProps?: Partial<Obj3d>
 ): Orbit3d {
     let e,
-        center,
+        center = [0, 0, 0],
         semiMajorAxis,
         semiMinorAxis,
         rightAscensionNode,
@@ -53,6 +53,7 @@ export function drawOrbit(
         }),
         recalculateOrbit: (p, v, o, mass) => {
             const params = keplerianParameters([...p], [...v], [...o], mass);
+            console.log({ p, v, o, mass, params });
 
             if (
                 !isNaN(params.semiMajorAxis) &&

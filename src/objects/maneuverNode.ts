@@ -1,6 +1,7 @@
 import { cuboid, rads, zeros, type Obj3d } from 'webgl-engine';
 import { drawCube } from '../drawing';
 import gameState from '../gameState';
+import { normalize } from '../utils';
 import { createContainer } from './container';
 
 export type ManeuverNode = Obj3d & {
@@ -95,7 +96,11 @@ export function drawManeuverNode(
         }
 
         // Hosit the information up
-        container.properties['mouseAngle'] = Math.abs(mouseAngle);
+        container.properties['mouseAngle'] = normalize(
+            mouseAngle,
+            0,
+            2 * Math.PI
+        );
         container.properties['targetPosition'] = [
             maneuverCube._bbox.x,
             maneuverCube._bbox.y,

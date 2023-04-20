@@ -1,6 +1,6 @@
 <script lang="ts">
     import Slider from '@smui/slider';
-    import gameState, { type Maneuver } from '../gameState';
+    import gameState from '../gameState';
     import { onMount } from 'svelte';
 
     export let visible = true;
@@ -12,27 +12,29 @@
     onMount(() => {
         gameState.addListener(() => {
             show = gameState.universe.showDeltaV;
-            if (gameState.universe.current.maneuver) {
-                prograde = gameState.universe.current.maneuver.prograde;
-                phase = gameState.universe.current.maneuver.phase;
+            const { maneuverSystem } = gameState.universe;
+
+            if (maneuverSystem && maneuverSystem.activeNode) {
+                prograde = maneuverSystem.activeNode.prograde;
+                phase = maneuverSystem.activeNode.phase;
             }
         });
     });
 
     $: {
-        if (gameState.universe.current.maneuver) {
-            gameState.universe.current.maneuver.prograde = prograde;
-            gameState.universe.current.maneuver.phase = phase;
+        const { maneuverSystem } = gameState.universe;
+
+        if (maneuverSystem && maneuverSystem.activeNode) {
+            maneuverSystem.updateNode(maneuverSystem.activeNode.planId, {
+                prograde,
+                phase,
+            });
         }
     }
 
     function reset() {
         prograde = 0;
         phase = 0;
-
-        if (gameState.universe.current.maneuver) {
-            gameState.universe.current.maneuver.status = 'aborted';
-        }
     }
 </script>
 
@@ -62,7 +64,6 @@
                     />
                 </div>
                 <button class="btn-reset" on:click={reset}>Reset</button>
-                <button class="btn-reset" on:click={reset}>Accept</button>
             </div>
         </div>
     </div>

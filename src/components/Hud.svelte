@@ -2,18 +2,22 @@
     import { onMount } from 'svelte';
     import type { Engine } from 'webgl-engine';
     import type { EngineProperties } from '../types';
-    import gameState, { type Maneuver } from '../gameState';
+    import gameState from '../gameState';
     import ManeuverItem from './ManeuverItem.svelte';
+    import type { ManeuverPlan } from '../maneuverSystem';
 
     const engine = window['gameEngine'] as Engine<EngineProperties>;
-    let maneuvers: Maneuver[] = [];
+    let maneuvers: ManeuverPlan[] = [];
     let readoutEl;
     let timeText = 'Resume';
     let show = true;
 
     onMount(() => {
         gameState.addListener(() => {
-            maneuvers = gameState.universe.maneuvers;
+            const { maneuverSystem } = gameState.universe;
+            if (maneuverSystem) {
+                maneuvers = maneuverSystem.nodes;
+            }
         });
 
         setInterval(() => {
@@ -51,9 +55,7 @@
 
         <div class="maneuver-items">
             {#each maneuvers as maneuver}
-                {#if maneuver.orbitId !== 1}
-                    <ManeuverItem {maneuver} />
-                {/if}
+                <ManeuverItem {maneuver} />
             {/each}
         </div>
     </div>

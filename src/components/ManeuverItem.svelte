@@ -1,23 +1,21 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import type { Maneuver } from '../gameState';
     import gameState from '../gameState';
+    import type { ManeuverPlan } from '../maneuverSystem';
 
-    export let maneuver: Maneuver;
+    export let maneuver: ManeuverPlan;
 
     function edit() {
-        gameState.setManeuver(maneuver);
         gameState.setShowDeltaV(true);
     }
 </script>
 
 <div
     class="orbit-node"
-    style="border: 2px solid rgb({maneuver.orbitColor.join(',')});"
+    style="border: 2px solid rgb({maneuver.color.join(',')});"
 >
     <div>prograde {maneuver.prograde}</div>
     <div>phase {maneuver.phase}</div>
-    <button on:click={edit}>Edit</button>
 </div>
 
 <style>

@@ -33,6 +33,14 @@ export class ManeuverSystem {
     player: Body;
     scene: Scene<unknown>;
 
+    constructor(scene: Scene<unknown>, player: Body) {
+        this.scene = scene;
+        this.player = player;
+        this.nodes = [];
+        this.activeNode = undefined;
+        this.objects = {};
+    }
+
     /**
      * Retrieve the top node in the hierarchy
      */
@@ -90,6 +98,7 @@ export class ManeuverSystem {
         }
 
         this.objects[nextNode.planId] = obj3dList;
+        gameState.setShowDeltaV(true);
         this.dispatch();
         return nextNode;
     }
@@ -162,13 +171,53 @@ export class ManeuverSystem {
         });
 
         const orbit = drawOrbit(position, velocity, foci, mass, { color });
+        orbit.properties = orbit.properties ?? {};
+        orbit.properties = {
+            ...orbit.properties,
+            position: [...position],
+            velocity: [...velocity],
+            origin: [...foci],
+            mass,
+        };
+
         return [maneuverCube, orbit];
     }
 
     /**
      * Redraw all the orbits and maneuver nodes
      */
-    private redraw() {}
+    private redraw() {
+        for (const planId in this.objects) {
+            // Find the plan
+            let plan: InternalManeuverPlan = this.nodes.find(
+                (plan) => `${plan.planId}` === `${planId}`
+            );
+
+            // If it's valid, redraw
+            if (
+                plan &&
+                plan.status !== 'aborted' &&
+                plan.status !== 'completed'
+            ) {
+                for (const object of this.objects[planId]) {
+                    if (object.recalculateOrbit) {
+                        const { position, velocity, origin, mass } =
+                            object.properties;
+
+                        object.recalculateOrbit(
+                            [...position],
+                            vecAdd(
+                                [...velocity],
+                                this.calculateDv(velocity, { ...plan })
+                            ),
+                            [...origin],
+                            mass
+                        );
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Calculate the difference between original intended orbit and
@@ -188,26 +237,32 @@ export class ManeuverSystem {
         velocity: number[],
         { prograde, phase }: ManeuverProperties
     ) {
+        const result = new Array(0, 0, 0);
         const accel = 0.5;
         const unit = [...velocity];
         const unitMag = norm(unit);
         const phaseVec = m4.cross(unit, [1, 0, 0]);
         const phaseVecMag = norm(phaseVec);
-        return [
-            accel * (unit[0] / unitMag) * prograde +
-                accel * (phaseVec[0] / phaseVecMag) * phase,
-            accel * (unit[1] / unitMag) * prograde +
-                accel * (phaseVec[1] / phaseVecMag) * phase,
-            accel * (unit[2] / unitMag) * prograde +
-                accel * (phaseVec[2] / phaseVecMag) * phase,
-        ];
+
+        for (let j = 0; j < 3; j++) {
+            if (unitMag !== 0) {
+                result[j] += accel * (unit[j] / unitMag) * prograde;
+            }
+
+            if (phaseVecMag !== 0) {
+                result[j] += accel * (phaseVec[j] / phaseVecMag) * phase;
+            }
+        }
+
+        return result;
     }
 }
 
 function vecAdd(v1: number[], v2: number[]) {
-    const result = [];
+    const result = new Array(0, 0, 0);
     for (let j = 0; j < Math.min(v1.length, v2.length); j++) {
-        result.push(v1[j] + v2[j]);
+        result[j] = v1[j] + v2[j];
     }
+
     return result;
 }

@@ -1,27 +1,7 @@
 import { XORShift } from 'random-seedable';
 import type { Engine } from 'webgl-engine';
+import type { ManeuverSystem } from './maneuverSystem';
 import { PhysicsEngine } from './math/physics';
-
-export type Maneuver = {
-    /** The id of the orbit which is tied to this plan */
-    orbitId: number;
-    /** The color of this orbit node */
-    orbitColor: [number, number, number];
-    /** The maneuver status */
-    status: 'pending' | 'executing' | 'complete' | 'aborted';
-    /** Position of the satellite at execution time */
-    position: [number, number, number];
-    /** Velocity of the satellite at execution time */
-    velocity: [number, number, number];
-    /** Original amount of delta-v in the prograde direction */
-    prograde: number;
-    /** Original amount of delta-v in the phase direction */
-    phase: number;
-    /** Remaining delta-V in the prograde direction */
-    remainingPrograde: number;
-    /** Remaining delta-v in the phase direction */
-    remainingPhase: number;
-};
 
 class GameState {
     random: XORShift;
@@ -29,6 +9,7 @@ class GameState {
     listeners: Array<() => void>;
     deltaV: number;
     universe: {
+        maneuverSystem?: ManeuverSystem;
         readout: string;
         activeOrbitId: number;
         totalOrbits: number;
@@ -37,9 +18,7 @@ class GameState {
         current: {
             position: [number, number, number];
             velocity: [number, number, number];
-            maneuver?: Maneuver;
         };
-        maneuvers: Maneuver[];
         freezePhysicsEngine: boolean;
         physicsEngine: PhysicsEngine;
     };
@@ -58,11 +37,9 @@ class GameState {
             current: {
                 position: [0, 0, 0],
                 velocity: [0, 0, 0],
-                maneuver: undefined,
             },
             freezePhysicsEngine: true,
             physicsEngine: new PhysicsEngine(),
-            maneuvers: [],
         };
     }
 
@@ -98,9 +75,14 @@ class GameState {
     }
 
     setManeuverParameters(prograde: number, phase: number) {
-        if (this.universe.current.maneuver) {
-            this.universe.current.maneuver.prograde = prograde;
-            this.universe.current.maneuver.phase = phase;
+        if (this.universe.maneuverSystem) {
+            const { planId } = this.universe.maneuverSystem.activeNode;
+            if (planId) {
+                this.universe.maneuverSystem.updateNode(planId, {
+                    prograde,
+                    phase,
+                });
+            }
         }
         this.dispatch();
     }
@@ -130,33 +112,8 @@ class GameState {
         this.dispatch();
     }
 
-    setManeuver(maneuver: Maneuver) {
-        this.universe.current.maneuver = maneuver;
-        this.dispatch();
-    }
-
-    clearManeuver() {
-        this.universe.current.maneuver = undefined;
-        this.dispatch();
-    }
-
     setFreezePhysicsEngine(value: boolean) {
         this.universe.freezePhysicsEngine = value;
-        this.dispatch();
-    }
-
-    addManeuverNode(maneuver) {
-        if (this.universe.maneuvers.indexOf(maneuver) === -1) {
-            this.universe.maneuvers.push(maneuver);
-        }
-        this.dispatch();
-    }
-
-    removeManeuverNode(maneuver) {
-        const index = this.universe.maneuvers.indexOf(maneuver);
-        if (index >= 0) {
-            this.universe.maneuvers.splice(index, 1);
-        }
         this.dispatch();
     }
 }
