@@ -89,25 +89,26 @@ export class PhysicsEngine {
         return result;
     }
 
-    findOrbitingBody(target: Body): Body {
-        if (!target) return;
+    findOrbitingBody(targetPosition: number[]): Body {
         const bodies = this.enabled_bodies();
 
         let closestForce = -1;
         let closestBody: Body;
 
         for (let i = 0; i < bodies.length; i++) {
-            if (bodies[i] === target) continue;
             const other = bodies[i];
             const unit = [
-                other.position[0] - target.position[0],
-                other.position[1] - target.position[1],
-                other.position[2] - target.position[2],
+                other.position[0] - targetPosition[0],
+                other.position[1] - targetPosition[1],
+                other.position[2] - targetPosition[2],
             ];
             const mag = norm(unit);
             const forces = new Array(0, 0, 0);
             for (let j = 0; j < 3; j++) {
                 forces[j] = (other.mass * G * unit[j]) / Math.pow(mag, 3);
+                if (isNaN(forces[j])) {
+                    forces[j] = 0;
+                }
             }
 
             const force = norm(forces);
@@ -124,7 +125,7 @@ export class PhysicsEngine {
         const position = [...body.position];
         const velocity = [...body.velocity];
 
-        const other = this.findOrbitingBody(body);
+        const other = this.findOrbitingBody(body.position);
         const masses = body.mass + other.mass;
         const center = [...other.position];
 

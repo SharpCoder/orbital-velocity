@@ -20,7 +20,6 @@ export type Orbit3d = Obj3d & {
 };
 
 export function drawOrbit(
-    id: number,
     position: number[],
     velocity: number[],
     origin: number[],
@@ -38,7 +37,7 @@ export function drawOrbit(
         invalid = false;
 
     // Create a maneuver node
-    const maneuverNode = drawManeuverNode(id, 1.2);
+    const maneuverNode = drawManeuverNode(1.2);
 
     const segments: Obj3d[] = [];
     const positions = EllipseCalculator.compute({
@@ -72,11 +71,7 @@ export function drawOrbit(
                 invalid = true;
             }
 
-            maneuverNode.configure(
-                params.rightAscensionNode,
-                params.semiMajorAxis,
-                params.semiMinorAxis
-            );
+            maneuverNode.configure(params.semiMajorAxis, params.semiMinorAxis);
 
             const positions = EllipseCalculator.compute({
                 semiMajorAxis,
@@ -144,8 +139,6 @@ export function drawOrbit(
     orbit.children.push(maneuverNode);
     orbit.properties = orbit.properties ?? {};
     maneuverNode.properties = maneuverNode.properties ?? {};
-    orbit.properties['id'] = id;
-    maneuverNode.properties['id'] = id;
 
     // Create the segments
     for (let i = 0; i < positions.length - 1; i++) {

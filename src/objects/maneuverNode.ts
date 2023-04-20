@@ -4,30 +4,19 @@ import gameState from '../gameState';
 import { createContainer } from './container';
 
 export type ManeuverNode = Obj3d & {
-    configure: (
-        raan: number,
-        semiMajorAxis: number,
-        semiMinorAxis: number
-    ) => void;
+    configure: (semiMajorAxis: number, semiMinorAxis: number) => void;
 };
 
 export function drawManeuverNode(
-    id: number,
     planePadding: number,
     containerProps?: Partial<Obj3d>
 ): ManeuverNode {
     let semiMajorAxis = 0;
     let semiMinorAxis = 0;
-    let raan = 0;
 
     const container = {
         ...createContainer(containerProps),
-        configure: (
-            _raan: number,
-            _semiMajorAxis: number,
-            _semiMinorAxis: number
-        ) => {
-            raan = _raan;
+        configure: (_semiMajorAxis: number, _semiMinorAxis: number) => {
             semiMajorAxis = _semiMajorAxis;
             semiMinorAxis = _semiMinorAxis;
         },
@@ -41,12 +30,16 @@ export function drawManeuverNode(
     const maneuverCube = drawCube({
         position: zeros(),
         size: [maneuverCubeSize, maneuverCubeSize, maneuverCubeSize],
+        offsets: [
+            -maneuverCubeSize / 2,
+            -maneuverCubeSize / 2,
+            -maneuverCubeSize / 2,
+        ],
     });
 
     const orbitalPlane = drawCube({
         properties: {
             plane: true,
-            id,
         },
         position: zeros(),
         size: [1, 1, 1],
@@ -58,12 +51,6 @@ export function drawManeuverNode(
 
     const originalUpdate = container.update;
     container.update = function (time_t, engine) {
-        if (container.properties['id'] !== gameState.universe.activeOrbitId) {
-            container.transparent = false;
-            maneuverCube.transparent = false;
-            return;
-        }
-
         const mouse_x = engine.properties['mouse_x'] ?? 0;
         const mouse_z = engine.properties['mouse_z'] ?? 0;
 
@@ -76,6 +63,7 @@ export function drawManeuverNode(
         const x = semiMajorAxis * (mx - 0.5);
         let mouseAngle = Math.atan2(y, x);
 
+        maneuverCube.rotation[1] = mouseAngle;
         maneuverCube.position = [
             semiMajorAxis * Math.cos(mouseAngle),
             0,
@@ -98,10 +86,7 @@ export function drawManeuverNode(
             Math.pow(normalizedCubeX - mouseRealX, 2) +
                 Math.pow(normalizedCubeZ - mouseRealY, 2)
         );
-        if (
-            dist < 150 &&
-            container.properties['id'] === gameState.universe.activeOrbitId
-        ) {
+        if (dist < 150) {
             maneuverCube.transparent = false;
             container.transparent = false;
         } else {
@@ -110,7 +95,7 @@ export function drawManeuverNode(
         }
 
         // Hosit the information up
-        container.properties['mouseAngle'] = mouseAngle;
+        container.properties['mouseAngle'] = Math.abs(mouseAngle);
         container.properties['targetPosition'] = [
             maneuverCube._bbox.x,
             maneuverCube._bbox.y,

@@ -17,7 +17,7 @@ const depthVertexShader = `
         gl_Position = u_projection * u_camera_inverse * u_worldView * a_position;
         vec4 position = a_position * u_camera;
 
-        v_color = vec4(0, position.x / u_height, position.z / u_width, 1);
+        v_color = vec4(128, position.x / u_height, position.z / u_width, 1);
     }
 `;
 
@@ -76,14 +76,9 @@ export const DepthShader: ProgramTemplate = {
             type: gl.FLOAT,
             normalized: false,
             generateData: (engine) => {
-                const activeOrbitId = gameState.universe.activeOrbitId;
-
                 return new Float32Array(
                     engine.activeScene.objects.flatMap((obj) => {
-                        if (
-                            obj.properties?.['plane'] &&
-                            obj.properties?.['id'] === activeOrbitId
-                        ) {
+                        if (obj.properties?.['plane']) {
                             return obj.vertexes;
                         } else {
                             return obj.vertexes.map((_) => 0);
