@@ -68,6 +68,11 @@ export function drawOrbit(
                 maneuverNode.properties['orbitPosition'] = [...p];
                 maneuverNode.properties['orbitVelocity'] = [...v];
 
+                orbit.properties['orbitPosition'] = [...p];
+                orbit.properties['orbitVelocity'] = [...v];
+                orbit.properties['orbitOrigin'] = [...o];
+                orbit.properties['orbitMass'] = mass;
+
                 e = params.e;
                 center = params.center;
                 semiMajorAxis = params.semiMajorAxis;

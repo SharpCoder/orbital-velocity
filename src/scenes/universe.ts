@@ -20,7 +20,7 @@ import { useTouchCamera } from '../logic/useTouchCamera';
 import { ManeuverSystem } from '../maneuverSystem';
 import { createUniverse } from '../mapgen';
 import { keplerianParameters, type Body } from '../math/physics';
-import { drawOrbit } from '../objects/orbit';
+import { drawOrbit, type Orbit3d } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
 import type { EngineProperties } from '../types';
@@ -28,6 +28,7 @@ import type { EngineProperties } from '../types';
 let dt = 0.08;
 let initialized = false;
 let player: Body;
+let orbit: Orbit3d;
 
 async function loadModels(): Promise<Record<string, ParsedModel>> {
     const result = {};
@@ -112,7 +113,7 @@ export const UniverseScene = new Scene<EngineProperties>({
                             player.position
                         );
 
-                        const orbit = drawOrbit(
+                        orbit = drawOrbit(
                             player.position,
                             player.velocity,
                             orbitingBody.position,
@@ -139,6 +140,18 @@ export const UniverseScene = new Scene<EngineProperties>({
                                     } else {
                                         orbit.setInteractive(false);
                                     }
+
+                                    orbit.properties['position'] = [
+                                        ...player.position,
+                                    ];
+                                    orbit.properties['velocity'] = [
+                                        ...player.velocity,
+                                    ];
+                                    orbit.properties['origin'] = [
+                                        ...orbitingBody.position,
+                                    ];
+                                    orbit.properties['mass'] =
+                                        orbitingBody.mass;
 
                                     // Redraw the base orbit
                                     orbit.recalculateOrbit(
@@ -281,7 +294,24 @@ export const UniverseScene = new Scene<EngineProperties>({
                             );
 
                             const dist = Math.sqrt(
-                                Math.pow(mouseAngle - eccentricAonomaly, 2)
+                                Math.pow(
+                                    step.position[0] -
+                                        maneuverNode.properties
+                                            .targetPosition[0],
+                                    2
+                                ) +
+                                    Math.pow(
+                                        step.position[1] -
+                                            maneuverNode.properties
+                                                .targetPosition[1],
+                                        2
+                                    ) +
+                                    Math.pow(
+                                        step.position[2] -
+                                            maneuverNode.properties
+                                                .targetPosition[2],
+                                        2
+                                    )
                             );
 
                             if (bestDistance > dist) {
@@ -295,13 +325,19 @@ export const UniverseScene = new Scene<EngineProperties>({
                                 bestNode.velocity[j] += 0.1;
                             }
 
-                            gameState.universe.maneuverSystem.registerNode({
-                                phase: 0,
-                                prograde: 0,
-                                position: [...bestNode.position],
-                                targetAngle: mouseAngle,
-                                velocity: [...bestNode.velocity],
-                            });
+                            const topOrbit = maneuverSystem.getTopOrbit();
+                            const parent = topOrbit ?? orbit;
+
+                            gameState.universe.maneuverSystem.registerNode(
+                                parent,
+                                {
+                                    phase: 0,
+                                    prograde: 0,
+                                    position: [...bestNode.position],
+                                    targetAngle: mouseAngle,
+                                    velocity: [...bestNode.velocity],
+                                }
+                            );
                         }
                     }
                     break;

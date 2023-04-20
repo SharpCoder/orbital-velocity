@@ -1,9 +1,10 @@
-import { type Scene, type Obj3d, norm, m4, rads } from 'webgl-engine';
+import { type Scene, type Obj3d, norm, m4, rads, zeros } from 'webgl-engine';
 import { drawCube } from './drawing';
-import type { Body } from './math/physics';
+import { keplerianParameters, type Body } from './math/physics';
 import { drawOrbit, type Orbit3d } from './objects/orbit';
 import gameState from './gameState';
 import { pink, sage, yellow } from './colors';
+import { normalize } from './utils';
 
 let nodeId = 1;
 const colors = [
@@ -35,14 +36,17 @@ type InternalManeuverPlan = ManeuverPlan & {
     parent?: ManeuverPlan;
     remainingPrograde?: number;
     remainingPhase?: number;
+    parentOrbit: Orbit3d;
 };
 
 export class ManeuverSystem {
     nodes: Array<InternalManeuverPlan>;
     activeNode: InternalManeuverPlan;
+    nextNode: InternalManeuverPlan;
     objects: Record<number, [Obj3d, Orbit3d]>;
     player: Body;
     scene: Scene<unknown>;
+    private drawn: boolean = false;
 
     constructor(scene: Scene<unknown>, player: Body) {
         this.scene = scene;
@@ -59,6 +63,18 @@ export class ManeuverSystem {
         return this.activeNode;
     }
 
+    /**
+     * Retrieve the orbit3d for the top node in the hierarchy
+     */
+    getTopOrbit(): Orbit3d {
+        const node = this.getTopNode();
+        if (node) {
+            return this.objects[node.planId][1];
+        } else {
+            return null;
+        }
+    }
+
     getBottomNode(): InternalManeuverPlan {
         let bottomNode = this.nodes[0];
         for (const node of this.nodes) {
@@ -72,11 +88,15 @@ export class ManeuverSystem {
     /**
      * Add a new maneuver node to the system
      */
-    registerNode(node: Omit<ManeuverPlan, 'color'>): InternalManeuverPlan {
+    registerNode(
+        parentOrbit: Orbit3d,
+        node: Omit<ManeuverPlan, 'color'>
+    ): InternalManeuverPlan {
         const planId = nodeId++;
         const nextNode: InternalManeuverPlan = {
             status: 'pending',
             planId,
+            parentOrbit,
             parent: this.activeNode,
             remainingPhase: Math.abs(node.phase),
             remainingPrograde: Math.abs(node.prograde),
@@ -90,11 +110,13 @@ export class ManeuverSystem {
 
         this.nodes.push(nextNode);
         this.activeNode = nextNode;
+        this.nextNode = this.nextNode ?? nextNode;
 
         // Create objects
         const { physicsEngine } = gameState.universe;
         const fociPhysObj = physicsEngine.findOrbitingBody(node.position);
         const obj3dList = this.createOrbit(
+            nextNode,
             [...node.position],
             vecAdd(
                 [...node.velocity],
@@ -119,6 +141,9 @@ export class ManeuverSystem {
      * Remove a maneuver node from the system
      */
     deregisterNode(planId: number, compact: boolean = false) {
+        console.log('deregistering ' + planId, { compact });
+        const planToRemove = this.nodes.find((plan) => plan.planId === planId);
+
         // Find the node and delete all nodes above it.
         const nodesToRemove: InternalManeuverPlan[] = [];
         const nodesToCompact: InternalManeuverPlan[] = [];
@@ -148,10 +173,11 @@ export class ManeuverSystem {
             const index = this.nodes.indexOf(node);
             if (index >= 0) {
                 this.nodes.splice(index, 1);
-                // Remove all objects associated with this node
-                for (const obj of this.objects[node.planId]) {
-                    this.scene.removeObject(obj);
-                }
+                // Remove all objects associated with this nod
+                const [cube, orbit] = this.objects[node.planId];
+                this.scene.removeObject(cube);
+                this.scene.removeObject(orbit);
+                // Cube cleans up after itself
             }
         }
 
@@ -161,23 +187,29 @@ export class ManeuverSystem {
             if (index >= 0) {
                 for (let j = 0; j < 3; j++) {
                     node.position[j] += offset[j];
-                    this.objects[node.planId][0].position[j] += offset[j];
-                    this.objects[node.planId][1].properties['position'][j] +=
-                        offset[j];
+                    const [cube, orbit] = this.objects[node.planId];
+                    cube.position[j] += offset[j];
                 }
             }
         }
 
         // Find a new active node
-        let topNode = this.nodes[0];
+        let bottomNode = this.nodes[0];
         for (const node of this.nodes) {
-            if (node.planId > topNode.planId) {
-                topNode = node;
+            if (node.status === 'pending' && node.planId > bottomNode.planId) {
+                bottomNode = node;
             }
         }
 
-        this.activeNode = topNode;
-        this.redraw();
+        if (bottomNode) {
+            console.log('setting ' + bottomNode.planId + ' as next plan');
+            // Propagate the main orbit down through the hierarchy.
+            bottomNode.parentOrbit = planToRemove.parentOrbit;
+        }
+
+        this.nextNode = bottomNode;
+
+        this.shrink();
         this.dispatch();
     }
 
@@ -203,17 +235,13 @@ export class ManeuverSystem {
      * Create a new orbit and associated objects.
      */
     private createOrbit(
+        plan: InternalManeuverPlan,
         position: number[],
         velocity: number[],
         foci: number[],
         mass: number,
         color: number[]
     ): [Obj3d, Orbit3d] {
-        const maneuverCube = drawCube({
-            position,
-            size: [50, 50, 50],
-        });
-
         const orbit = drawOrbit(
             [...position],
             [...velocity],
@@ -230,6 +258,34 @@ export class ManeuverSystem {
             }
         );
 
+        const maneuverCube = drawCube({
+            position,
+            transparent: true,
+            size: [50, 50, 50],
+            update: function (_t, engine) {
+                const { maneuverSystem } = gameState.universe;
+                const { orbitPosition, orbitVelocity, orbitOrigin, orbitMass } =
+                    plan.parentOrbit.properties;
+
+                const params = keplerianParameters(
+                    [...orbitPosition],
+                    [...orbitVelocity],
+                    [...orbitOrigin],
+                    orbitMass
+                );
+
+                maneuverCube.offsets = [
+                    -25 + params.semiMajorAxis * Math.cos(-plan.targetAngle),
+                    -25,
+                    -25 + params.semiMinorAxis * Math.sin(-plan.targetAngle),
+                ];
+
+                maneuverCube.position = plan.parentOrbit.position;
+                maneuverCube.additionalMatrix =
+                    plan.parentOrbit._computed.positionMatrix;
+            },
+        });
+
         return [maneuverCube, orbit];
     }
 
@@ -237,6 +293,8 @@ export class ManeuverSystem {
      * Redraw all the orbits and maneuver nodes
      */
     private redraw() {
+        if (this.drawn) return;
+
         for (const planId in this.objects) {
             // Find the plan
             let plan: InternalManeuverPlan = this.nodes.find(
@@ -249,28 +307,29 @@ export class ManeuverSystem {
                 plan.status !== 'aborted' &&
                 plan.status !== 'completed'
             ) {
-                for (const object of this.objects[planId]) {
-                    if (object.recalculateOrbit) {
-                        const { position, velocity, origin, mass } =
-                            object.properties;
+                const [cube, orbit] = this.objects[planId];
+                const { position, velocity, origin, mass } = orbit.properties;
+                const newVelocity = vecAdd(
+                    [...velocity],
+                    this.calculateDv(velocity, { ...plan })
+                );
 
-                        object.recalculateOrbit(
-                            [...position],
-                            vecAdd(
-                                [...velocity],
-                                this.calculateDv(velocity, { ...plan })
-                            ),
-                            [...origin],
-                            mass
-                        );
-                    }
-                }
+                orbit.recalculateOrbit(
+                    [...position],
+                    newVelocity,
+                    [...origin],
+                    mass
+                );
             }
         }
+
+        this.drawn = true;
     }
 
     /** Process all business logic */
     loop() {
+        this.drawn = false;
+
         if (gameState.universe.freezePhysicsEngine !== true) {
             this.executePlans();
         }
@@ -308,14 +367,14 @@ export class ManeuverSystem {
                 Math.pow(eccentricAonomaly - plan.targetAngle, 2)
             );
 
-            if (dist < rads(15)) {
+            if (dist < rads(1)) {
                 // Execute!!
                 plan.status = 'in-situ';
             }
         } else if (plan && plan.status === 'in-situ') {
             const { prograde, phase, remainingPhase, remainingPrograde } = plan;
-            const deltaPrograde = prograde / 25;
-            const deltaPhase = phase / 25;
+            const deltaPrograde = prograde / 15;
+            const deltaPhase = phase / 15;
             const deltaV = this.calculateDv(this.player.velocity, {
                 prograde: remainingPrograde > 0 ? deltaPrograde : 0,
                 phase: remainingPhase > 0 ? deltaPhase : 0,
@@ -335,6 +394,89 @@ export class ManeuverSystem {
 
             this.redraw();
         }
+    }
+
+    /**
+     * This method will recalculate the position of all orbits, starting through the hierarchy
+     * and propagating as needed, to find the new position. All the way down.
+     */
+    private shrink() {
+        console.log('shrinking');
+        const nodes = [...this.nodes].sort((a, b) => a.planId - b.planId);
+        let parentPosition = [...this.player.position];
+        let parentVelocity = [...this.player.velocity];
+
+        for (const node of nodes) {
+            const [position, velocity, origin, mass] =
+                this.calculateParametersForOrbitAtAnomaly(
+                    parentPosition,
+                    parentVelocity,
+                    node.targetAngle
+                );
+
+            const [_, orbit] = this.objects[node.planId];
+            node.position = [...position];
+            node.velocity = [...velocity];
+            orbit.properties['position'] = [...position];
+            orbit.properties['velocity'] = [...velocity];
+            orbit.properties['origin'] = [...origin];
+            orbit.properties['mass'] = mass;
+
+            parentPosition = position;
+            parentVelocity = velocity;
+        }
+
+        this.redraw();
+    }
+
+    private calculateParametersForOrbitAtAnomaly(
+        position: number[],
+        velocity: number[],
+        targetAngle: number
+    ): [number[], number[], number[], number] {
+        const { physicsEngine } = gameState.universe;
+        const orbitingBody = physicsEngine.findOrbitingBody(position);
+        const params = keplerianParameters(
+            position,
+            velocity,
+            orbitingBody.position,
+            orbitingBody.mass
+        );
+        const steps = physicsEngine.propogate(
+            position,
+            velocity,
+            orbitingBody.mass,
+            0.5,
+            params.orbitalPeriod
+        );
+
+        let bestDist = Number.MAX_VALUE;
+        let best: Body = null;
+
+        for (const step of steps) {
+            // Calculate the parameters
+            const orbitalParameters = keplerianParameters(
+                step.position,
+                step.velocity,
+                orbitingBody.position,
+                orbitingBody.mass
+            );
+
+            const dist = Math.sqrt(
+                Math.pow(orbitalParameters.eccentricAonomaly - targetAngle, 2)
+            );
+            if (bestDist > dist) {
+                bestDist = dist;
+                best = step;
+            }
+        }
+
+        return [
+            best?.position ?? [0, 0, 0],
+            best?.velocity ?? [0, 0, 0],
+            orbitingBody.position,
+            orbitingBody.mass,
+        ];
     }
 
     /**

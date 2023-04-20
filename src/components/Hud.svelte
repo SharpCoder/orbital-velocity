@@ -75,13 +75,13 @@
 
     .maneuver-items {
         flex-grow: 1;
-        flex-direction: column;
         top: 0;
         bottom: 0;
         position: absolute;
         height: 100%;
         display: flex;
-        justify-content: flex-end;
+        flex-direction: column-reverse;
+        justify-content: flex;
     }
 
     .item-space {
