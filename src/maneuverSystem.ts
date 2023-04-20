@@ -3,8 +3,19 @@ import { drawCube } from './drawing';
 import type { Body } from './math/physics';
 import { drawOrbit, type Orbit3d } from './objects/orbit';
 import gameState from './gameState';
+import { pink, sage, yellow } from './colors';
 
 let nodeId = 0;
+const colors = [
+    [255, 213, 0],
+    [0, 255, 85],
+    [0, 42, 255],
+    [255, 0, 170],
+    [113, 255, 0],
+    [0, 240, 255],
+    [142, 0, 255],
+    [255, 15, 0],
+];
 
 export type ManeuverProperties = {
     prograde: number;
@@ -61,14 +72,15 @@ export class ManeuverSystem {
     /**
      * Add a new maneuver node to the system
      */
-    registerNode(node: ManeuverPlan): InternalManeuverPlan {
+    registerNode(node: Omit<ManeuverPlan, 'color'>): InternalManeuverPlan {
+        const planId = nodeId++;
         const nextNode: InternalManeuverPlan = {
             status: 'pending',
-            planId: nodeId++,
+            planId,
             parent: this.activeNode,
             remainingPhase: Math.abs(node.phase),
             remainingPrograde: Math.abs(node.prograde),
-            color: node.color,
+            color: colors[planId % (colors.length - 1)],
             prograde: node.prograde,
             phase: node.phase,
             position: node.position,
@@ -90,7 +102,7 @@ export class ManeuverSystem {
             ),
             [...fociPhysObj.position],
             fociPhysObj.mass,
-            node.color
+            nextNode.color
         );
 
         for (const obj of obj3dList) {
@@ -223,9 +235,11 @@ export class ManeuverSystem {
 
     /** Process all business logic */
     loop() {
-        this.executePlans();
-        const topNode = this.getTopNode();
+        if (gameState.universe.freezePhysicsEngine !== true) {
+            this.executePlans();
+        }
 
+        const topNode = this.getTopNode();
         for (const planId in this.objects) {
             const plan = this.nodes.find(
                 (plan) => `${plan.planId}` === `${planId}`
@@ -237,6 +251,14 @@ export class ManeuverSystem {
                 } else {
                     this.objects[planId][1].setInteractive(false);
                 }
+            }
+        }
+
+        for (const node of this.nodes) {
+            if (node.status === 'aborted') {
+                this.deregisterNode(node.planId);
+                this.redraw();
+                this.dispatch();
             }
         }
     }

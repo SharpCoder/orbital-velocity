@@ -74,14 +74,14 @@
     }
 
     .maneuver-items {
-        padding: 20px;
         flex-grow: 1;
         flex-direction: column;
         top: 0;
+        bottom: 0;
         position: absolute;
         height: 100%;
         display: flex;
-        justify-content: center;
+        justify-content: flex-end;
     }
 
     .item-space {
@@ -93,11 +93,12 @@
     }
 
     .physics-space {
-        /* align-self: flex-end; */
         align-items: flex-end;
         display: flex;
         flex-direction: column;
         flex-grow: 1;
+        right: 20px;
+        position: absolute;
     }
 
     .physics-space button {

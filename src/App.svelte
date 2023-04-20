@@ -4,12 +4,14 @@
     import Hud from './components/Hud.svelte';
     import type { EngineProperties } from './types';
     import ManeuverDialog from './components/ManeuverDialog.svelte';
+    import Loading from './components/Loading.svelte';
 
     let test = false;
     let debugEl: HTMLDivElement;
     let webglCanvas: HTMLCanvasElement;
     let initialized = false;
     let timerId;
+    let loading;
 
     onMount(() => {
         const engine = window['gameEngine'] as Engine<EngineProperties>;
@@ -19,6 +21,10 @@
         }
 
         timerId = setInterval(() => {
+            loading = engine.activeScene
+                ? engine.activeScene.status === 'initializing'
+                : true;
+
             if (debugEl) {
                 debugEl.innerText = `${engine._debugLogs}`;
             }
@@ -39,10 +45,15 @@
     }
 </script>
 
-<div id="debug" bind:this={debugEl} />
+{#if loading}
+    <Loading />
+{:else}
+    <div id="debug" bind:this={debugEl} />
+    <Hud />
+    <ManeuverDialog visible={true} />
+{/if}
+
 <canvas id="canvas" bind:this={webglCanvas} />
-<Hud />
-<ManeuverDialog visible={true} />
 
 <style>
     #canvas {

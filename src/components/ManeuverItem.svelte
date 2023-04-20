@@ -12,7 +12,9 @@
 
 <div
     class="orbit-node"
-    style="border: 2px solid rgb({maneuver.color.join(',')});"
+    style="border: 2px solid rgb({maneuver.color.join(
+        ','
+    )}); background-color: rgb({maneuver.color.join(',')});"
 >
     <div>prograde {maneuver.prograde}</div>
     <div>phase {maneuver.phase}</div>
@@ -20,13 +22,12 @@
 
 <style>
     .orbit-node {
-        background-color: black;
-        color: white;
+        font-weight: bold;
         font-size: 1rem;
         font-family: var(--font);
         display: flex;
         flex-direction: column;
-        padding: 2px 10px;
+        padding: 2px 20px;
         margin: 10px 0px;
     }
 

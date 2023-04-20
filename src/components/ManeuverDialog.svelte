@@ -36,6 +36,13 @@
         prograde = 0;
         phase = 0;
     }
+
+    function cancel() {
+        const { maneuverSystem } = gameState.universe;
+        if (maneuverSystem && maneuverSystem.activeNode) {
+            maneuverSystem.activeNode.status = 'aborted';
+        }
+    }
 </script>
 
 {#if show}
@@ -64,6 +71,7 @@
                     />
                 </div>
                 <button class="btn-reset" on:click={reset}>Reset</button>
+                <button class="btn-reset" on:click={cancel}>Cancel</button>
             </div>
         </div>
     </div>
