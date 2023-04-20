@@ -130,13 +130,14 @@ export const UniverseScene = new Scene<EngineProperties>({
                                     // Basic orbit logic
                                     const { maneuverSystem } =
                                         gameState.universe;
+
                                     if (
                                         maneuverSystem &&
                                         maneuverSystem.nodes.length === 0
                                     ) {
-                                        orbit.setInteractive(false);
-                                    } else {
                                         orbit.setInteractive(true);
+                                    } else {
+                                        orbit.setInteractive(false);
                                     }
 
                                     // Redraw the base orbit
@@ -225,27 +226,49 @@ export const UniverseScene = new Scene<EngineProperties>({
         const maneuverNodes = objects.filter(
             (obj) => obj.properties?.['maneuverNode']
         );
+
         if (mouseClickDuration < 180) {
             for (const maneuverNode of maneuverNodes) {
-                if (maneuverNode.properties['visible']) {
+                if (maneuverNode.properties['visible'] === true) {
                     const { physicsEngine, maneuverSystem } =
                         gameState.universe;
 
-                    if (maneuverSystem && maneuverSystem.nodes.length === 0) {
+                    if (maneuverSystem) {
+                        let targetAttributes = {
+                            position: zeros(),
+                            velocity: zeros(),
+                        };
+
+                        targetAttributes.position =
+                            maneuverNode.properties['orbitPosition'] ??
+                            player.position;
+
+                        targetAttributes.velocity =
+                            maneuverNode.properties['orbitVelocity'] ??
+                            player.velocity;
+
                         const { mouseAngle } = maneuverNode.properties;
 
                         // Find the target position.
                         const orbitingBody = physicsEngine.findOrbitingBody(
-                            player.position
+                            targetAttributes.position
                         );
-                        const params =
-                            physicsEngine.keplerianParameters(player);
+
+                        const params = keplerianParameters(
+                            targetAttributes.position,
+                            targetAttributes.velocity,
+                            orbitingBody.position,
+                            orbitingBody.mass
+                        );
 
                         const steps = physicsEngine.propogate(
-                            player,
+                            targetAttributes.position,
+                            targetAttributes.velocity,
+                            player.mass,
                             dt,
                             Math.min(params.orbitalPeriod, 10000)
                         );
+
                         // Find the closest position
                         let bestDistance = Number.MAX_VALUE;
                         let bestNode: Body;
@@ -275,12 +298,13 @@ export const UniverseScene = new Scene<EngineProperties>({
                             gameState.universe.maneuverSystem.registerNode({
                                 phase: 0,
                                 prograde: 0,
-                                position: bestNode.position,
+                                position: [...bestNode.position],
                                 targetAngle: mouseAngle,
-                                velocity: bestNode.velocity,
+                                velocity: [...bestNode.velocity],
                             });
                         }
                     }
+                    break;
                 }
             }
         }

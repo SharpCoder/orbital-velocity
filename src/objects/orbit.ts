@@ -38,7 +38,9 @@ export function drawOrbit(
         invalid = false;
 
     // Create a maneuver node
-    const maneuverNode = drawManeuverNode(1.2);
+    const maneuverNode = drawManeuverNode(1.2, {
+        properties: containerProps.properties,
+    });
 
     const segments: Obj3d[] = [];
     const positions = EllipseCalculator.compute({
@@ -53,7 +55,8 @@ export function drawOrbit(
             ...containerProps,
         }),
         setInteractive: (enabled: boolean) => {
-            maneuverNode.transparent = enabled;
+            maneuverNode.transparent = !enabled;
+            maneuverNode.properties['visible'] = enabled;
         },
         recalculateOrbit: (p, v, o, mass) => {
             const params = keplerianParameters([...p], [...v], [...o], mass);
@@ -62,6 +65,9 @@ export function drawOrbit(
                 !isNaN(params.semiMinorAxis) &&
                 params.e < 1.0
             ) {
+                maneuverNode.properties['orbitPosition'] = [...p];
+                maneuverNode.properties['orbitVelocity'] = [...v];
+
                 e = params.e;
                 center = params.center;
                 semiMajorAxis = params.semiMajorAxis;

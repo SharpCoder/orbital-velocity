@@ -75,9 +75,14 @@ export class PhysicsEngine {
 
             const mag = norm(unit);
             for (let j = 0; j < 3; j++) {
-                const ddot = (G * unit[j]) / Math.pow(mag, 3);
-                accel[0][j] += mass[i] * ddot;
-                accel[i][j] -= mass[0] * ddot;
+                if (mag === 0) {
+                    accel[0][j] = 0;
+                    accel[i][j] = 0;
+                } else {
+                    const ddot = (G * unit[j]) / Math.pow(mag, 3);
+                    accel[0][j] += mass[i] * ddot;
+                    accel[i][j] -= mass[0] * ddot;
+                }
             }
         }
 
@@ -155,13 +160,19 @@ export class PhysicsEngine {
         return [state_vec, masses];
     }
 
-    propogate(target: Body, dt: number, duration: number): Body[] {
+    propogate(
+        position: number[],
+        velocity: number[],
+        mass: number,
+        dt: number,
+        duration: number
+    ): Body[] {
         const shadowBody: Body = {
-            _forces: [...target._forces],
-            internalId: target.internalId,
-            mass: target.mass,
-            position: [...target.position],
-            velocity: [...target.velocity],
+            _forces: new Array(position.length),
+            internalId: -1,
+            mass: 1,
+            position: [...position] as Vec3d,
+            velocity: [...velocity] as Vec3d,
         };
 
         const steps = [];
@@ -169,6 +180,7 @@ export class PhysicsEngine {
         for (let t = 0; t < duration; t += dt) {
             const [state_vec, masses] = this.create_state_vec(shadowBody);
             const next_state = rk4iter(this.solve, state_vec, masses, dt);
+
             const midpoint = next_state.length / 2;
             for (let j = 0; j < 3; j++) {
                 shadowBody.position[j] = next_state[j];

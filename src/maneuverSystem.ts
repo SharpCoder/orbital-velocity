@@ -5,7 +5,7 @@ import { drawOrbit, type Orbit3d } from './objects/orbit';
 import gameState from './gameState';
 import { pink, sage, yellow } from './colors';
 
-let nodeId = 0;
+let nodeId = 1;
 const colors = [
     [255, 213, 0],
     [0, 255, 85],
@@ -118,11 +118,27 @@ export class ManeuverSystem {
     /**
      * Remove a maneuver node from the system
      */
-    deregisterNode(planId: number) {
+    deregisterNode(planId: number, compact: boolean = false) {
         // Find the node and delete all nodes above it.
-        const nodesToRemove = [];
+        const nodesToRemove: InternalManeuverPlan[] = [];
+        const nodesToCompact: InternalManeuverPlan[] = [];
+
+        const offset = new Array(0, 0, 0);
         for (const node of this.nodes) {
-            if (node.planId >= planId) {
+            if (node.planId === planId) {
+                nodesToRemove.push(node);
+                offset[0] =
+                    this.player.position[0] -
+                    (node.position[0] + node.velocity[0]);
+                offset[1] =
+                    this.player.position[1] -
+                    (node.position[1] + node.velocity[1]);
+                offset[2] =
+                    this.player.position[2] -
+                    (node.position[2] + node.velocity[2]);
+            } else if (node.planId > planId && compact) {
+                nodesToCompact.push(node);
+            } else if (node.planId > planId && !compact) {
                 nodesToRemove.push(node);
             }
         }
@@ -139,6 +155,19 @@ export class ManeuverSystem {
             }
         }
 
+        while (nodesToCompact.length > 0) {
+            const node = nodesToCompact.pop();
+            const index = this.nodes.indexOf(node);
+            if (index >= 0) {
+                for (let j = 0; j < 3; j++) {
+                    node.position[j] += offset[j];
+                    this.objects[node.planId][0].position[j] += offset[j];
+                    this.objects[node.planId][1].properties['position'][j] +=
+                        offset[j];
+                }
+            }
+        }
+
         // Find a new active node
         let topNode = this.nodes[0];
         for (const node of this.nodes) {
@@ -148,6 +177,7 @@ export class ManeuverSystem {
         }
 
         this.activeNode = topNode;
+        this.redraw();
         this.dispatch();
     }
 
@@ -184,15 +214,21 @@ export class ManeuverSystem {
             size: [50, 50, 50],
         });
 
-        const orbit = drawOrbit(position, velocity, foci, mass, { color });
-        orbit.properties = orbit.properties ?? {};
-        orbit.properties = {
-            ...orbit.properties,
-            position: [...position],
-            velocity: [...velocity],
-            origin: [...foci],
+        const orbit = drawOrbit(
+            [...position],
+            [...velocity],
+            foci,
             mass,
-        };
+            { color },
+            {
+                properties: {
+                    position: [...position],
+                    velocity: [...velocity],
+                    origin: [...foci],
+                    mass,
+                },
+            }
+        );
 
         return [maneuverCube, orbit];
     }
@@ -240,13 +276,9 @@ export class ManeuverSystem {
         }
 
         const topNode = this.getTopNode();
-        for (const planId in this.objects) {
-            const plan = this.nodes.find(
-                (plan) => `${plan.planId}` === `${planId}`
-            );
-
-            if (plan) {
-                if (plan === topNode) {
+        if (topNode) {
+            for (const planId in this.objects) {
+                if (`${planId}` === `${topNode.planId}`) {
                     this.objects[planId][1].setInteractive(true);
                 } else {
                     this.objects[planId][1].setInteractive(false);
@@ -276,14 +308,14 @@ export class ManeuverSystem {
                 Math.pow(eccentricAonomaly - plan.targetAngle, 2)
             );
 
-            if (dist < rads(10)) {
+            if (dist < rads(15)) {
                 // Execute!!
                 plan.status = 'in-situ';
             }
         } else if (plan && plan.status === 'in-situ') {
             const { prograde, phase, remainingPhase, remainingPrograde } = plan;
-            const deltaPrograde = prograde / 30;
-            const deltaPhase = phase / 30;
+            const deltaPrograde = prograde / 25;
+            const deltaPhase = phase / 25;
             const deltaV = this.calculateDv(this.player.velocity, {
                 prograde: remainingPrograde > 0 ? deltaPrograde : 0,
                 phase: remainingPhase > 0 ? deltaPhase : 0,
@@ -298,19 +330,12 @@ export class ManeuverSystem {
 
             if (plan.remainingPhase <= 0 && plan.remainingPrograde <= 0) {
                 plan.status = 'completed';
-                this.deregisterNode(plan.planId);
+                this.deregisterNode(plan.planId, true);
             }
 
             this.redraw();
         }
     }
-
-    /**
-     * Calculate the difference between original intended orbit and
-     * actual orbit and offset everything by the correct amount so it
-     * still lines up. Either using offsets or nu.
-     */
-    private shrink() {}
 
     /**
      * Dispatch an update through gameState
