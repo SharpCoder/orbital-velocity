@@ -53,8 +53,6 @@ export function drawOrbit(
         }),
         recalculateOrbit: (p, v, o, mass) => {
             const params = keplerianParameters([...p], [...v], [...o], mass);
-            console.log({ p, v, o, mass, params });
-
             if (
                 !isNaN(params.semiMajorAxis) &&
                 !isNaN(params.semiMinorAxis) &&
@@ -102,8 +100,6 @@ export function drawOrbit(
                 segment.normals = cylinder.normals;
                 segment.position = cylinder.position;
             }
-
-            // console.log(i);
 
             // Rotate ourself
             const matrix = m4.combine([

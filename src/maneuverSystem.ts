@@ -1,4 +1,4 @@
-import { type Scene, type Obj3d, norm, m4 } from 'webgl-engine';
+import { type Scene, type Obj3d, norm, m4, rads } from 'webgl-engine';
 import { drawCube } from './drawing';
 import type { Body } from './math/physics';
 import { drawOrbit } from './objects/orbit';
@@ -147,6 +147,8 @@ export class ManeuverSystem {
             if (node.planId === planId) {
                 node.prograde = prograde ?? node.prograde ?? 0;
                 node.phase = phase ?? node.phase ?? 0;
+                node.remainingPhase = Math.abs(node.phase);
+                node.remainingPrograde = Math.abs(node.prograde);
                 break;
             }
         }
@@ -216,6 +218,48 @@ export class ManeuverSystem {
                     }
                 }
             }
+        }
+    }
+
+    executePlans() {
+        // Get the bottom plan
+        const { physicsEngine } = gameState.universe;
+        const plan = this.getBottomNode();
+        if (plan && plan.status === 'pending') {
+            const { eccentricAonomaly } = physicsEngine.keplerianParameters(
+                this.player
+            );
+
+            const dist = Math.sqrt(
+                Math.pow(eccentricAonomaly - plan.targetAngle, 2)
+            );
+
+            if (dist < rads(10)) {
+                // Execute!!
+                plan.status = 'in-situ';
+            }
+        } else if (plan && plan.status === 'in-situ') {
+            const { prograde, phase, remainingPhase, remainingPrograde } = plan;
+            const deltaPrograde = prograde / 30;
+            const deltaPhase = phase / 30;
+            const deltaV = this.calculateDv(this.player.velocity, {
+                prograde: remainingPrograde > 0 ? deltaPrograde : 0,
+                phase: remainingPhase > 0 ? deltaPhase : 0,
+            });
+
+            for (let j = 0; j < 3; j++) {
+                this.player.velocity[j] += deltaV[j];
+            }
+
+            plan.remainingPhase -= Math.abs(deltaPhase);
+            plan.remainingPrograde -= Math.abs(deltaPrograde);
+
+            if (plan.remainingPhase <= 0 && plan.remainingPrograde <= 0) {
+                plan.status = 'completed';
+                this.deregisterNode(plan.planId);
+            }
+
+            this.redraw();
         }
     }
 

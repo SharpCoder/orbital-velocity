@@ -19,7 +19,7 @@ import gameState from '../gameState';
 import { useTouchCamera } from '../logic/useTouchCamera';
 import { ManeuverSystem } from '../maneuverSystem';
 import { createUniverse } from '../mapgen';
-import type { Body } from '../math/physics';
+import { keplerianParameters, type Body } from '../math/physics';
 import { drawOrbit } from '../objects/orbit';
 import { DepthShader } from '../shaders/depth';
 import { StarboxShader } from '../shaders/starbox';
@@ -120,7 +120,22 @@ export const UniverseScene = new Scene<EngineProperties>({
                             {
                                 color: purple,
                             },
-                            {}
+                            {
+                                update: () => {
+                                    const orbitingBody =
+                                        physicsEngine.findOrbitingBody(
+                                            player.position
+                                        );
+
+                                    // Redraw the base orbit
+                                    orbit.recalculateOrbit(
+                                        [...player.position],
+                                        [...player.velocity],
+                                        [...orbitingBody.position],
+                                        orbitingBody.mass
+                                    );
+                                },
+                            }
                         );
 
                         UniverseScene.addObject(orbit);
@@ -160,7 +175,7 @@ export const UniverseScene = new Scene<EngineProperties>({
     update: (time, engine) => {
         useTouchCamera(engine);
 
-        const { physicsEngine } = gameState.universe;
+        const { physicsEngine, maneuverSystem } = gameState.universe;
         if (
             gameState.universe.freezePhysicsEngine !== true ||
             initialized === false
@@ -168,6 +183,10 @@ export const UniverseScene = new Scene<EngineProperties>({
             physicsEngine.update(dt);
 
             if (player) {
+                if (maneuverSystem) {
+                    maneuverSystem.executePlans();
+                }
+
                 initialized = true;
                 gameState.setPosition(player.position);
                 gameState.setVelocity(player.velocity);
@@ -194,71 +213,60 @@ export const UniverseScene = new Scene<EngineProperties>({
         if (mouseClickDuration < 180) {
             for (const maneuverNode of maneuverNodes) {
                 if (maneuverNode.transparent === false) {
-                    const { physicsEngine } = gameState.universe;
-                    const { mouseAngle } = maneuverNode.properties;
-                    const params = physicsEngine.keplerianParameters(player);
+                    const { physicsEngine, maneuverSystem } =
+                        gameState.universe;
 
-                    console.log({
-                        mouseAngle,
-                        eccentricAnomaly: params.eccentricAonomaly,
-                    });
+                    if (maneuverSystem && maneuverSystem.nodes.length === 0) {
+                        const { mouseAngle } = maneuverNode.properties;
 
-                    // gameState.universe.maneuverSystem.registerNode({
-                    //     color: [255, 0, 0],
-                    //     phase: 0,
-                    //     prograde: 0,
-                    //     position: player.position,
-                    //     targetAngle: mouseAngle,
-                    //     velocity: player.velocity,
-                    // });
+                        // Find the target position.
+                        const orbitingBody = physicsEngine.findOrbitingBody(
+                            player.position
+                        );
+                        const params =
+                            physicsEngine.keplerianParameters(player);
 
-                    // const targetBody =
-                    //     chainedOrbits[gameState.universe.activeOrbitId];
-                    // const { targetPosition } = maneuverNode.properties;
-                    // const center = physicsEngine.findOrbitingBody(targetBody);
-                    // const params = keplerianParameters(
-                    //     targetBody.position,
-                    //     targetBody.velocity,
-                    //     center.position,
-                    //     center.mass + targetBody.mass
-                    // );
-                    // const steps = physicsEngine.propogate(
-                    //     targetBody,
-                    //     dt,
-                    //     params.orbitalPeriod
-                    // );
-                    // // Find the closest position
-                    // let bestDistance = Number.MAX_VALUE;
-                    // let bestNode: Body;
-                    // for (const step of steps) {
-                    //     const dist = Math.sqrt(
-                    //         Math.pow(step.position[0] - targetPosition[0], 2) +
-                    //             Math.pow(
-                    //                 step.position[1] - targetPosition[1],
-                    //                 2
-                    //             ) +
-                    //             Math.pow(
-                    //                 step.position[2] - targetPosition[2],
-                    //                 2
-                    //             )
-                    //     );
-                    //     if (bestDistance > dist) {
-                    //         bestDistance = dist;
-                    //         bestNode = step;
-                    //     }
-                    // }
-                    // if (bestNode) {
-                    //     console.log({
-                    //         mouseAngle: maneuverNode.properties['mouseAngle'],
-                    //         eccentricAnomaly: normalize(
-                    //             params.eccentricAonomaly,
-                    //             0,
-                    //             2 * Math.PI
-                    //         ),
-                    //     });
-                    //     for (let j = 0; j < 3; j++) bestNode.velocity[j] += 0.1;
-                    //     addManeuver(bestNode, physicsEngine);
-                    // }
+                        const steps = physicsEngine.propogate(
+                            player,
+                            dt,
+                            Math.min(params.orbitalPeriod, 10000)
+                        );
+                        // Find the closest position
+                        let bestDistance = Number.MAX_VALUE;
+                        let bestNode: Body;
+                        for (const step of steps) {
+                            const { eccentricAonomaly } = keplerianParameters(
+                                step.position,
+                                step.velocity,
+                                params.center,
+                                orbitingBody.mass
+                            );
+
+                            const dist = Math.sqrt(
+                                Math.pow(mouseAngle - eccentricAonomaly, 2)
+                            );
+
+                            if (bestDistance > dist) {
+                                bestDistance = dist;
+                                bestNode = step;
+                            }
+                        }
+
+                        if (bestNode) {
+                            for (let j = 0; j < 3; j++) {
+                                bestNode.velocity[j] += 0.1;
+                            }
+
+                            gameState.universe.maneuverSystem.registerNode({
+                                color: [255, 0, 0],
+                                phase: 0,
+                                prograde: 0,
+                                position: bestNode.position,
+                                targetAngle: mouseAngle,
+                                velocity: bestNode.velocity,
+                            });
+                        }
+                    }
                 }
             }
         }
