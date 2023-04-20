@@ -8,14 +8,12 @@ import { normalize } from './utils';
 
 let nodeId = 1;
 const colors = [
-    [255, 213, 0],
-    [0, 255, 85],
-    [0, 42, 255],
-    [255, 0, 170],
-    [113, 255, 0],
-    [0, 240, 255],
-    [142, 0, 255],
-    [255, 15, 0],
+    [245, 233, 10],
+    [240, 7, 189],
+    [5, 250, 225],
+    [245, 152, 2],
+    [2, 247, 125],
+    [255, 255, 255],
 ];
 
 export type ManeuverProperties = {
@@ -100,7 +98,7 @@ export class ManeuverSystem {
             parent: this.activeNode,
             remainingPhase: Math.abs(node.phase),
             remainingPrograde: Math.abs(node.prograde),
-            color: colors[planId % (colors.length - 1)],
+            color: [...colors[planId % colors.length]],
             prograde: node.prograde,
             phase: node.phase,
             position: node.position,
@@ -124,7 +122,7 @@ export class ManeuverSystem {
             ),
             [...fociPhysObj.position],
             fociPhysObj.mass,
-            nextNode.color
+            [...nextNode.color]
         );
 
         for (const obj of obj3dList) {
@@ -247,7 +245,7 @@ export class ManeuverSystem {
             [...velocity],
             foci,
             mass,
-            { color },
+            { color: [...color] },
             {
                 properties: {
                     position: [...position],
@@ -420,6 +418,11 @@ export class ManeuverSystem {
             orbit.properties['position'] = [...position];
             orbit.properties['velocity'] = [...velocity];
             orbit.properties['origin'] = [...origin];
+            orbit.properties['orbitPosition'] = [...position];
+            orbit.properties['orbitVelocity'] = vecAdd(
+                [...velocity],
+                this.calculateDv(velocity, { ...node })
+            );
             orbit.properties['mass'] = mass;
 
             parentPosition = position;
